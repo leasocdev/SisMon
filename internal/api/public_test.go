@@ -51,6 +51,8 @@ func (b *fakeBackups) Open(name string) (io.ReadSeekCloser, jobs.BackupInfo, err
 	return nil, jobs.BackupInfo{}, apperr.NotFound("Backup inexistent.")
 }
 
+var testRemote = "192.0.2.10:1234"
+
 type testServer struct {
 	d   Deps
 	mon *fakeMonitor
@@ -78,7 +80,7 @@ func newServer(t *testing.T, extra ...func(*http.ServeMux, Deps)) *testServer {
 	mon := &fakeMonitor{result: icmp.Result{Sent: 3, Received: 3}}
 	px, _ := auth.ParseProxies([]string{"10.0.0.5"})
 	d := Deps{Store: st, Hub: hub, Settings: settings.NewHolder(settings.Defaults()), Monitor: mon, Backups: &fakeBackups{},
-		Sessions: auth.NewSessions(st), Limiter: auth.NewLimiter(5, 5*time.Minute, 100), Proxy: px, Version: "test", Now: time.Now}
+		Sessions: auth.NewSessions(st), Limiter: auth.NewLimiter(5, 5*time.Minute, 100), Proxy: px, Version: "test", Now: time.Now, Sleep: func(context.Context, time.Duration) {}}
 	var ex func(*http.ServeMux, Deps)
 	if len(extra) > 0 {
 		ex = extra[0]
@@ -99,7 +101,7 @@ func (s *testServer) do(method, path string, body any, hdr map[string]string) *h
 		rd = bytes.NewReader(raw)
 	}
 	req := httptest.NewRequest(method, "http://nw.local"+path, rd)
-	req.RemoteAddr = "192.0.2.10:1234"
+	req.RemoteAddr = testRemote
 	for k, v := range hdr {
 		req.Header.Set(k, v)
 	}

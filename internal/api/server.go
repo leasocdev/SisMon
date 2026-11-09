@@ -47,6 +47,17 @@ type Deps struct {
 	DataDir  string
 	// SSEPing overrides the SSE keep-alive period (tests).
 	SSEPing time.Duration
+	// Sleep applies the login failure delay; nil means a real, ctx-aware sleep.
+	Sleep func(ctx context.Context, d time.Duration)
+}
+
+func realSleep(ctx context.Context, d time.Duration) {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+	case <-t.C:
+	}
 }
 
 // New builds the HTTP handler.
@@ -59,6 +70,9 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	if d.SSEPing == 0 {
 		d.SSEPing = 15 * time.Second
 	}
+	if d.Sleep == nil {
+		d.Sleep = realSleep
+	}
 	mux := http.NewServeMux()
 	p := &public{d}
 	mux.HandleFunc("GET /api/state", p.state)
@@ -68,6 +82,7 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	mux.HandleFunc("GET /api/devices/{id}/latency", p.latency)
 	mux.HandleFunc("GET /api/report24", p.report24)
 	mux.HandleFunc("GET /api/events", p.events)
+	registerAdmin(mux, d)
 	if extra != nil {
 		extra(mux, d)
 	}
