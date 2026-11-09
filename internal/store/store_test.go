@@ -86,7 +86,10 @@ func TestFreshDatabaseSkipsBeforeMigrate(t *testing.T) {
 
 func TestMetaRoundTrip(t *testing.T) {
 	s := openTemp(t)
-	type X struct{ A string; B int }
+	type X struct {
+		A string
+		B int
+	}
 	ctx := context.Background()
 	if err := s.SetMeta(ctx, "x", X{"ă", 3}); err != nil {
 		t.Fatal(err)
