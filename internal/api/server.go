@@ -1,0 +1,89 @@
+// Package api serves the HTTP API (public, admin, SSE) and the web UI.
+package api
+
+import (
+	"context"
+	"io"
+	"io/fs"
+	"net/http"
+	"time"
+
+	"netwatch/internal/apperr"
+	"netwatch/internal/auth"
+	"netwatch/internal/jobs"
+	"netwatch/internal/live"
+	"netwatch/internal/monitor/icmp"
+	"netwatch/internal/settings"
+	"netwatch/internal/store"
+)
+
+// Monitor is the part of the monitoring service the API uses.
+type Monitor interface {
+	Reload(ctx context.Context) error
+	TestHost(ctx context.Context, host string) (icmp.Result, error)
+	Health() live.Health
+}
+
+// Backups is the backup service as seen by the API.
+type Backups interface {
+	List() ([]jobs.BackupInfo, error)
+	Create(ctx context.Context, kind string) (jobs.BackupInfo, error)
+	Open(name string) (io.ReadSeekCloser, jobs.BackupInfo, error)
+}
+
+// Deps are the server's dependencies.
+type Deps struct {
+	Store    *store.Store
+	Hub      *live.Hub
+	Settings *settings.Holder
+	Monitor  Monitor
+	Backups  Backups
+	Sessions *auth.Sessions
+	Limiter  *auth.Limiter
+	Proxy    auth.Proxy
+	Web      fs.FS // nil until the web UI is embedded (Plan 2)
+	Version  string
+	Now      func() time.Time
+	DataDir  string
+	// SSEPing overrides the SSE keep-alive period (tests).
+	SSEPing time.Duration
+}
+
+// New builds the HTTP handler.
+func New(d Deps) http.Handler { return build(d, nil) }
+
+func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+	if d.SSEPing == 0 {
+		d.SSEPing = 15 * time.Second
+	}
+	mux := http.NewServeMux()
+	p := &public{d}
+	mux.HandleFunc("GET /api/state", p.state)
+	mux.HandleFunc("GET /api/catalog", p.catalog)
+	mux.HandleFunc("GET /api/stats", p.stats)
+	mux.HandleFunc("GET /api/devices/{id}/timeline", p.timeline)
+	mux.HandleFunc("GET /api/devices/{id}/latency", p.latency)
+	mux.HandleFunc("GET /api/report24", p.report24)
+	if extra != nil {
+		extra(mux, d)
+	}
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		writeError(w, apperr.NotFound("Ruta API nu există."))
+	})
+	if d.Web != nil {
+		mux.Handle("/", http.FileServerFS(d.Web))
+	} else {
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			io.WriteString(w, "NetWatch API "+d.Version+"\n")
+		})
+	}
+	return recoverer(secure(accessLog(mux)))
+}
