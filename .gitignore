@@ -1,0 +1,11 @@
+/dist/
+/data/
+/demo-data/
+*.db
+*.db-wal
+*.db-shm
+*.exe
+/netwatch
+/web/node_modules/
+/internal/webui/dist/*
+!/internal/webui/dist/.gitkeep
