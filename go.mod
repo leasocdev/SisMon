@@ -3,9 +3,11 @@ module netwatch
 go 1.27.3
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.62.0
 	golang.org/x/sys v0.50.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	modernc.org/sqlite v1.62.0
 )
 
