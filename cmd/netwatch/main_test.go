@@ -7,7 +7,7 @@ import (
 
 func TestVersionCommand(t *testing.T) {
 	var out bytes.Buffer
-	if code := run([]string{"version"}, &out); code != 0 {
+	if code := run([]string{"version"}, nil, &out, &out); code != 0 {
 		t.Fatalf("exit code %d", code)
 	}
 	if out.String() != "NetWatch 1.0.0-dev\n" {

@@ -7,37 +7,56 @@ import (
 	"os"
 	_ "time/tzdata"
 
+	"netwatch/internal/svc"
 	"netwatch/internal/version"
 )
 
 const usage = `Utilizare: netwatch <comandă> [opțiuni]
 
 Comenzi:
-  run            Pornește monitorizarea în prim-plan
-  install        Instalează serviciul de sistem
-  uninstall      Elimină serviciul de sistem
-  start | stop | status
-  set-password   Setează parola administratorului
-  backup         Creează un backup imediat
-  restore FIȘIER Restaurează baza dintr-un backup
-  version        Afișează versiunea
+  run              Pornește monitorizarea în prim-plan
+  install          Instalează serviciul de sistem (necesită administrator/root)
+  uninstall        Elimină serviciul de sistem
+  start | stop     Pornește / oprește serviciul
+  status           Afișează starea serviciului
+  set-password     Setează parola administratorului
+  backup           Creează un backup imediat
+  restore FIȘIER   Restaurează baza dintr-un backup
+  version          Afișează versiunea
+
+Opțiuni comune: --data DIRECTOR, --listen ADRESĂ:PORT, --tls auto|files,
+  --tls-cert FIȘIER, --tls-key FIȘIER, --trusted-proxy IP/CIDR (repetabil)
 `
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout))
+	svc.SetupConsoleUTF8()
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
-func run(args []string, stdout io.Writer) int {
+func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stdout, usage)
 		return 2
 	}
-	switch args[0] {
-	case "version":
+	cmd, rest := args[0], args[1:]
+	switch cmd {
+	case "version", "--version", "-v":
 		fmt.Fprintf(stdout, "NetWatch %s\n", version.Version)
 		return 0
-	default:
-		fmt.Fprintf(stdout, "Comandă necunoscută: %s\n\n%s", args[0], usage)
-		return 2
+	case "help", "--help", "-h":
+		fmt.Fprint(stdout, usage)
+		return 0
+	case "run":
+		return cmdRun(rest, stdout, stderr)
+	case "install", "uninstall", "start", "stop", "status":
+		return cmdService(cmd, rest, stdout, stderr)
+	case "set-password":
+		return cmdSetPassword(rest, stdin, stdout, stderr)
+	case "backup":
+		return cmdBackup(rest, stdout, stderr)
+	case "restore":
+		return cmdRestore(rest, stdout, stderr)
 	}
+	fmt.Fprintf(stderr, "Comandă necunoscută: %s\n\n%s", cmd, usage)
+	return 2
 }
