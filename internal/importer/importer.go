@@ -141,7 +141,7 @@ func table(format, enc, sep string, records []RawRow) (*Table, error) {
 	}
 	t := &Table{Format: format, Encoding: enc, Separator: sep, Columns: map[string]int{}}
 	for i, h := range records[0].Cells {
-		h = strings.TrimPrefix(h, "﻿") // BOM left by some XLSX producers
+		h = strings.TrimPrefix(h, string(rune(0xFEFF))) // BOM left by some XLSX producers
 		if canon, ok := synonyms[Fold(h)]; ok {
 			if _, dup := t.Columns[canon]; !dup {
 				t.Columns[canon] = i
