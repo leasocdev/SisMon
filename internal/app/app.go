@@ -17,6 +17,7 @@ import (
 
 	"netwatch/internal/api"
 	"netwatch/internal/auth"
+	"netwatch/internal/branding"
 	"netwatch/internal/config"
 	"netwatch/internal/jobs"
 	"netwatch/internal/live"
@@ -112,7 +113,7 @@ func Run(ctx context.Context, cfg config.Config, opt Options) error {
 		opt.Web = webui.FS()
 	}
 	handler := api.New(api.Deps{Store: st, Hub: hub, Settings: set, Monitor: svc, Backups: backups, Sessions: sessions,
-		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Tiles: tp, Version: version.Version, DataDir: cfg.DataDir})
+		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Tiles: tp, Logo: func() []byte { b, _ := branding.Load(cfg.DataDir); return b }, Version: version.Version, DataDir: cfg.DataDir})
 	if opt.Wrap != nil {
 		handler = opt.Wrap(handler)
 	}

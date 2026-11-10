@@ -98,6 +98,7 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	mux.HandleFunc("GET /api/locations/{id}/timeline", p.locationTimeline)
 	mux.HandleFunc("GET /api/events", p.events)
 	mux.HandleFunc("GET /api/export/{format}", p.exportStats)
+	mux.HandleFunc("GET /branding/logo", p.logo)
 	if d.Tiles != nil {
 		mux.Handle("GET /tiles/", d.Tiles)
 	}

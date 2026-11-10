@@ -40,6 +40,8 @@ func registerAdmin(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("PUT /api/admin/settings", a.guard(a.putSettings))
 	mux.HandleFunc("GET /api/admin/identity", a.guard(a.getIdentity))
 	mux.HandleFunc("PUT /api/admin/identity", a.guard(a.putIdentity))
+	mux.HandleFunc("POST /api/admin/identity/logo", a.guard(a.uploadLogo))
+	mux.HandleFunc("DELETE /api/admin/identity/logo", a.guard(a.deleteLogo))
 	mux.HandleFunc("GET /api/admin/audit", a.guard(a.audit))
 	mux.HandleFunc("GET /api/admin/diagnostic", a.guard(a.diagnostic))
 	mux.HandleFunc("GET /api/admin/backups", a.guard(a.listBackups))
