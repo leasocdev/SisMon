@@ -6,10 +6,11 @@
   let {
     name,
     subtitle = '',
+    logoVersion = 0,
     theme,
     onTheme,
     status,
-  }: { name: string; subtitle?: string; theme: Theme; onTheme: (t: Theme) => void; status?: Snippet } = $props();
+  }: { name: string; subtitle?: string; logoVersion?: number; theme: Theme; onTheme: (t: Theme) => void; status?: Snippet } = $props();
 
   const links = [
     { href: '/', label: 'Monitorizare', match: ['monitor', 'location'] },
@@ -23,8 +24,11 @@
 
 <header class="hdr">
   <a class="brand" href="/">
+    {#if logoVersion > 0}<img class="logo" src="/branding/logo?v={logoVersion}" alt="" />{/if}
+    <span class="texts">
     <span class="name">{name}</span>
     {#if subtitle}<span class="sub">{subtitle}</span>{/if}
+    </span>
   </a>
   <nav aria-label="Navigare principală">
     <ul>
@@ -60,10 +64,20 @@
   }
   .brand {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 8px;
     text-decoration: none;
     color: var(--fg);
     line-height: 1.1;
+  }
+  .texts {
+    display: flex;
+    flex-direction: column;
+  }
+  .logo {
+    height: 32px;
+    max-width: 120px;
+    object-fit: contain;
   }
   .name {
     font-weight: 700;

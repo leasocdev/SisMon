@@ -35,3 +35,13 @@ test.describe('încărcare eșuată', () => {
     await expect(page.getByText('Pagina nu a putut fi încărcată')).toBeVisible();
   });
 });
+
+test('bannerul modului demonstrativ', async ({ page }) => {
+  await page.goto('http://127.0.0.1:18511/');
+  await expect(page.getByText('MOD DEMONSTRATIV')).toBeVisible();
+  await page.goto('http://127.0.0.1:18511/dispecerat');
+  await expect(page.getByText('MOD DEMONSTRATIV')).toBeVisible();
+  await page.goto('/');
+  await expect(page.locator('.loc-card').first()).toBeVisible();
+  await expect(page.getByText('MOD DEMONSTRATIV')).toHaveCount(0);
+});

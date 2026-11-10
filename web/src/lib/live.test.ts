@@ -88,7 +88,7 @@ describe('LiveStore', () => {
   let localNow = 1_000_000;
   const state: StateResponse = {
     epoch: 10, seq: 5, locations: [loc(1), loc(2)], health,
-    identity: { name: 'NetWatch', subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version: 't', now: 1_060_000,
+    identity: { name: 'NetWatch', subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version: 't', now: 1_060_000, demo: false,
   };
   function deps(): LiveDeps {
     return {
@@ -170,7 +170,7 @@ describe('LiveStore after a server restart', () => {
   function mk(version: string, name: string, epoch: number): StateResponse {
     return {
       epoch, seq: 1, locations: [loc(1)], health,
-      identity: { name, subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version, now: 1000,
+      identity: { name, subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version, now: 1000, demo: false,
     };
   }
 

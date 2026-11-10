@@ -234,6 +234,7 @@ func main() {
 	listen := flag.String("listen", "127.0.0.1:18501", "adresa serverului NetWatch")
 	ctrlAddr := flag.String("control", "127.0.0.1:18502", "adresa portului de control")
 	noPassword := flag.Bool("no-password", false, "pornește fără parolă de administrator")
+	demoFlag := flag.Bool("demo-flag", false, "marchează serverul ca mod demonstrativ (banner)")
 	web := flag.String("web", "internal/webui/dist", "directorul interfeței compilate")
 	flag.Parse()
 
@@ -269,6 +270,7 @@ func main() {
 		Web:           os.DirFS(*web),
 		Wrap:          c.wrap,
 		TilesUpstream: "http://" + *ctrlAddr + "/osm",
+		Demo:          *demoFlag,
 		IntervalScale: 1.0 / 60,
 		FlushEvery:    50 * time.Millisecond,
 		Ready:         func(a string) { log.Printf("e2eserver gata pe %s (control %s, date %s)", a, *ctrlAddr, dataDir) },

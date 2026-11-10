@@ -4,6 +4,7 @@
   import ConfirmHost from './components/ConfirmHost.svelte';
   import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
+  import DemoBanner from './components/DemoBanner.svelte';
   import LoadFailed from './components/LoadFailed.svelte';
   import Monitor from './pages/Monitor.svelte';
   import Dispatch from './pages/Dispatch.svelte';
@@ -57,8 +58,9 @@
   });
 </script>
 
+{#if router.route.name !== 'dispatch'}<DemoBanner />{/if}
 {#if router.route.name !== 'dispatch'}
-  <Header name={live.identity.name} subtitle={live.identity.subtitle} {theme} onTheme={setTheme}>
+  <Header name={live.identity.name} subtitle={live.identity.subtitle} logoVersion={live.identity.logo_version} {theme} onTheme={setTheme}>
     {#snippet status()}<ConnectionBadge />{/snippet}
   </Header>
 {/if}

@@ -3,6 +3,7 @@
   import ConnectionBadge from '../components/ConnectionBadge.svelte';
   import SoundToggle from '../components/SoundToggle.svelte';
   import LoadFailed from '../components/LoadFailed.svelte';
+  import DemoBanner from '../components/DemoBanner.svelte';
   import { computeGrid } from '../lib/grid';
   import { live } from '../lib/live.svelte';
   import { router } from '../lib/router.svelte';
@@ -57,9 +58,11 @@
 </script>
 
 <div class="dispatch" class:stale={live.stale} bind:this={root}>
+  <DemoBanner />
   <h1 class="sr-only">Dispecerat</h1>
   <header class="top">
     <div class="ident">
+      {#if live.identity.logo_version > 0}<img class="dlogo" src="/branding/logo?v={live.identity.logo_version}" alt="" />{/if}
       <span class="name">{live.identity.name}</span>
       <span class="date">{fmtDate(now)}</span>
     </div>
@@ -132,6 +135,11 @@
   .name {
     font-weight: 700;
     font-size: 1.3em;
+  }
+  .dlogo {
+    height: 40px;
+    max-width: 140px;
+    object-fit: contain;
   }
   .date {
     color: var(--muted);

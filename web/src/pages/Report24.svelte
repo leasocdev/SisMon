@@ -39,6 +39,7 @@
 
 <div class="page report">
   <div class="title">
+    {#if live.identity.logo_version > 0}<img class="rlogo" src="/branding/logo?v={live.identity.logo_version}" alt="" />{/if}
     <h1>{live.identity.report_title}</h1>
     <div class="actions no-print">
       <SoundToggle />
@@ -93,6 +94,11 @@
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+  }
+  .rlogo {
+    height: 44px;
+    max-width: 160px;
+    object-fit: contain;
   }
   .title h1 {
     margin: 8px 0;

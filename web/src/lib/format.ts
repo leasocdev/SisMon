@@ -22,6 +22,9 @@ const AUDIT: Record<string, string> = {
   setup_password: 'Parolă inițială setată',
   change_password: 'Parolă schimbată',
   set_password_cli: 'Parolă setată din linia de comandă',
+  import: 'Import de locații',
+  logo: 'Logo încărcat',
+  logo_delete: 'Logo eliminat',
 };
 
 export function auditAction(a: string): string {

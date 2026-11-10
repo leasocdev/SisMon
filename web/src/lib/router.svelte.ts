@@ -11,7 +11,7 @@ export interface Route {
   path: string;
 }
 
-export const ADMIN_PAGES = ['setari', 'identitate', 'backup', 'audit', 'diagnostic', 'parola', 'despre'] as const;
+export const ADMIN_PAGES = ['setari', 'identitate', 'import', 'backup', 'audit', 'diagnostic', 'parola', 'despre'] as const;
 
 const patterns: [RouteName, RegExp, string[]][] = [
   ['monitor', /^\/$/, []],

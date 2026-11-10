@@ -3,6 +3,8 @@
 export class ApiError extends Error {
   status: number;
   field?: string;
+  /** The full JSON error body (e.g. an import preview). */
+  data?: unknown;
   constructor(status: number, message: string, field?: string) {
     super(message);
     this.status = status;
@@ -40,7 +42,9 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   const init: RequestInit = { method, headers, credentials: 'same-origin' };
   if (method !== 'GET' && method !== 'HEAD') {
     if (csrf) headers['X-CSRF-Token'] = csrf;
-    if (body !== undefined) {
+    if (body instanceof FormData) {
+      init.body = body; // the browser sets the multipart boundary
+    } else if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(body);
     }
@@ -65,7 +69,11 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
       onUnauthorized();
     }
     const e = data as { error?: string; field?: string } | null;
-    if (e && typeof e.error === 'string') throw new ApiError(res.status, e.error, e.field || undefined);
+    if (e && typeof e.error === 'string') {
+      const err = new ApiError(res.status, e.error, e.field || undefined);
+      err.data = data;
+      throw err;
+    }
     throw new ApiError(res.status, OFFLINE);
   }
   if (!isJSON) throw new ApiError(res.status, OFFLINE);
@@ -78,4 +86,11 @@ export function get<T>(path: string, params?: Params): Promise<T> {
 
 export function send<T>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
   return request<T>(method, path, body);
+}
+
+/** Uploads one file as multipart form data (field "file"). */
+export function upload<T>(path: string, file: File): Promise<T> {
+  const fd = new FormData();
+  fd.append('file', file);
+  return request<T>('POST', path, fd);
 }

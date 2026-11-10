@@ -289,4 +289,8 @@
   :global(.leaflet-container a) {
     color: var(--link);
   }
+  :global(.leaflet-control-attribution) {
+    background: var(--surface) !important;
+    color: var(--fg);
+  }
 </style>

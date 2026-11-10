@@ -72,6 +72,7 @@ export class LiveStore {
   identity = $state<Identity>({ name: 'NetWatch', subtitle: 'NETWORK MONITOR', report_title: 'Raport de disponibilitate', logo_version: 0 });
   intervalS = $state(60);
   version = $state('');
+  demo = $state(false);
   epoch = $state(0);
   connected = $state(false);
   stale = $state(false);
@@ -162,6 +163,7 @@ export class LiveStore {
     this.identity = s.identity;
     this.intervalS = s.interval_s;
     this.version = s.version;
+    this.demo = !!s.demo;
     this.clockOffset = s.now - this.deps.now();
     return s;
   }

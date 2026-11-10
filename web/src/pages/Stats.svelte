@@ -4,7 +4,7 @@
   import PeriodPicker from '../components/PeriodPicker.svelte';
   import SortableTable from '../components/SortableTable.svelte';
   import StateBar from '../components/StateBar.svelte';
-  import { ApiError, get } from '../lib/api';
+  import { ApiError, get, withQuery } from '../lib/api';
   import { live } from '../lib/live.svelte';
   import { navigate, router, toSearch } from '../lib/router.svelte';
   import { fmtLatency, fmtLoss, fmtPct } from '../lib/status';
@@ -46,6 +46,7 @@
     loading = true;
     const now = live.serverNow();
     const params = apiParams(f, now);
+    lastParams = params;
     try {
       const r = await get<Report>('/api/stats', params);
       if (my !== seq) return;
@@ -74,6 +75,12 @@
     }
   });
 
+  // The exported files use exactly the parameters of the report on screen.
+  let lastParams = $state<Record<string, string>>({});
+  function exportHref(fmt: string): string {
+    return withQuery(`/api/export/${fmt}`, lastParams);
+  }
+
   const columns: Column<DeviceRow>[] = [
     { key: 'location', label: 'Locație', value: (r) => r.location },
     { key: 'name', label: 'Echipament', value: (r) => r.name },
@@ -90,7 +97,15 @@
 </script>
 
 <div class="page stats">
-  <h1>Statistici</h1>
+  <div class="titlebar">
+    <h1>Statistici</h1>
+    <div class="exports" role="group" aria-label="Export">
+      <span class="muted">Export:</span>
+      {#each [['csv', 'CSV'], ['xlsx', 'Excel'], ['pdf', 'PDF']] as [fmt, label] (fmt)}
+        <a class="btn" href={exportHref(fmt)} download>{label}</a>
+      {/each}
+    </div>
+  </div>
   <p class="period muted">
     Perioada: {shown.from ? fmtDateTime(shown.from) : '…'} – {shown.to ? fmtDateTime(shown.to) : '…'} · Ora: {TZ}
   </p>
@@ -188,6 +203,27 @@
 </div>
 
 <style>
+  .titlebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .exports {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .btn {
+    display: inline-block;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--fg);
+    text-decoration: none;
+  }
   .period {
     margin-top: -6px;
   }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, get, send, setCsrf } from './api';
+import { ApiError, get, send, setCsrf, upload } from './api';
 
 function respond(status: number, body: string, type = 'application/json') {
   return vi.fn(async () => new Response(body, { status, headers: { 'Content-Type': type } }));
@@ -52,5 +52,21 @@ describe('api', () => {
     vi.stubGlobal('fetch', f);
     await get('/api/stats', { from: '1', location: '3' });
     expect((f.mock.calls[0] as unknown[])[0]).toBe('/api/stats?from=1&location=3');
+  });
+});
+
+describe('upload', () => {
+  it('sends multipart form data with the CSRF token', async () => {
+    const f = respond(200, '{"ok":true}');
+    vi.stubGlobal('fetch', f);
+    setCsrf('tok');
+    await upload('/api/admin/import/preview', new File(['a;b'], 'x.csv'));
+    const init = (f.mock.calls[0] as unknown[])[1] as RequestInit;
+    expect(init.method).toBe('POST');
+    expect(init.body).toBeInstanceOf(FormData);
+    expect((init.body as FormData).get('file')).toBeInstanceOf(File);
+    const h = init.headers as Record<string, string>;
+    expect(h['X-CSRF-Token']).toBe('tok');
+    expect(h['Content-Type']).toBeUndefined();
   });
 });

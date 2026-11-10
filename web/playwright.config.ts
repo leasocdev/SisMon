@@ -25,5 +25,5 @@ export default defineConfig({
     timezoneId: 'America/New_York',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
-  webServer: [server('127.0.0.1:18501', '127.0.0.1:18502'), server('127.0.0.1:18511', '127.0.0.1:18512', '--no-password')],
+  webServer: [server('127.0.0.1:18501', '127.0.0.1:18502'), server('127.0.0.1:18511', '127.0.0.1:18512', '--no-password --demo-flag')],
 });

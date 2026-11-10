@@ -64,6 +64,7 @@ export interface StateResponse extends Snapshot {
   interval_s: number;
   version: string;
   now: number;
+  demo: boolean;
 }
 
 export interface Segment {
@@ -251,4 +252,26 @@ export interface TestResult {
   latency_ms: number | null;
   code: string;
   message: string;
+}
+
+export interface ImportCellError {
+  column: string;
+  message: string;
+}
+
+export interface ImportRow {
+  line: number;
+  values: Record<string, string>;
+  errors: ImportCellError[];
+}
+
+export interface ImportPreview {
+  format: string;
+  encoding: string;
+  separator: string;
+  rows: ImportRow[];
+  locations: number;
+  devices: number;
+  error_count: number;
+  valid: boolean;
 }
