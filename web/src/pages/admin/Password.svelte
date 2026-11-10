@@ -35,8 +35,8 @@
   }
 </script>
 
-  <h1>Parolă</h1>
-  <form class="card pw" onsubmit={submit} novalidate>
+<h1>Parolă</h1>
+<form class="card pw" onsubmit={submit} novalidate>
   {#if error}<p class="notice danger" role="alert">{error}</p>{/if}
   <div class="field">
     <label for="pw-old">Parola actuală</label>
@@ -58,10 +58,10 @@
 </form>
 
 <style>
-.pw {
-  padding: 14px 16px;
-  max-width: 480px;
-}
+  .pw {
+    padding: 14px 16px;
+    max-width: 480px;
+  }
   .pw input {
     width: 100%;
   }
