@@ -4,6 +4,7 @@
   import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
   import Monitor from './pages/Monitor.svelte';
+  import Dispatch from './pages/Dispatch.svelte';
   import LocationPanel from './pages/LocationPanel.svelte';
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
@@ -76,6 +77,8 @@
         {/if}
       {/snippet}
     </Monitor>
+  {:else if router.route.name === 'dispatch'}
+    <Dispatch />
   {:else}
     <div class="page"><h1>{titles[router.route.name]}</h1></div>
   {/if}
