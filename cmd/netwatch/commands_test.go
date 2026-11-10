@@ -2,6 +2,10 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"time"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -96,5 +100,44 @@ func TestOutputUTF8Redirected(t *testing.T) {
 	out, _ := cmd.CombinedOutput()
 	if !utf8.Valid(out) || !strings.Contains(string(out), "Parolele nu coincid.") {
 		t.Fatalf("%q", out)
+	}
+}
+
+func TestCmdDemoStarts(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "demo-data")
+	ready := make(chan string, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	demoReady, demoCtx = func(a string) { ready <- a }, ctx
+	defer func() { demoReady, demoCtx = nil, nil }()
+	done := make(chan int, 1)
+	var out bytes.Buffer
+	go func() { done <- run([]string{"demo", "--data", dir, "--listen", "127.0.0.1:0"}, strings.NewReader(""), &out, &out) }()
+	var addr string
+	select {
+	case addr = <-ready:
+	case code := <-done:
+		t.Fatalf("exited %d: %s", code, out.String())
+	case <-time.After(20 * time.Second):
+		t.Fatal("not ready")
+	}
+	resp, err := http.Get("http://" + addr + "/api/state")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var st struct {
+		Demo      bool
+		Locations []struct{ Name string }
+	}
+	json.NewDecoder(resp.Body).Decode(&st)
+	resp.Body.Close()
+	cancel()
+	if code := <-done; code != 0 {
+		t.Fatalf("exit %d: %s", code, out.String())
+	}
+	if !st.Demo || len(st.Locations) != 12 {
+		t.Fatalf("%+v", st)
+	}
+	if !strings.Contains(out.String(), "netwatch-demo") {
+		t.Fatalf("password not printed: %s", out.String())
 	}
 }

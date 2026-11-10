@@ -44,6 +44,8 @@ type Options struct {
 	Wrap func(http.Handler) http.Handler
 	// TilesUpstream overrides the OSM tile server (end-to-end tests).
 	TilesUpstream string
+	// Demo marks the demo mode in /api/state.
+	Demo bool
 }
 
 func defaultLookup(ctx context.Context, host string) ([]netip.Addr, error) {
@@ -113,7 +115,7 @@ func Run(ctx context.Context, cfg config.Config, opt Options) error {
 		opt.Web = webui.FS()
 	}
 	handler := api.New(api.Deps{Store: st, Hub: hub, Settings: set, Monitor: svc, Backups: backups, Sessions: sessions,
-		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Tiles: tp, Logo: func() []byte { b, _ := branding.Load(cfg.DataDir); return b }, Version: version.Version, DataDir: cfg.DataDir})
+		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Demo: opt.Demo, Tiles: tp, Logo: func() []byte { b, _ := branding.Load(cfg.DataDir); return b }, Version: version.Version, DataDir: cfg.DataDir})
 	if opt.Wrap != nil {
 		handler = opt.Wrap(handler)
 	}

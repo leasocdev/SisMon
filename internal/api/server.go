@@ -42,6 +42,8 @@ type Deps struct {
 	Limiter  *auth.Limiter
 	Proxy    auth.Proxy
 	Web      fs.FS // nil until the web UI is embedded (Plan 2)
+	// Demo marks the simulated demo mode (shown as a banner).
+	Demo bool
 	// Logo returns the uploaded logo (PNG) or nil; used by the PDF export.
 	Logo func() []byte
 	// Tiles serves /tiles/{z}/{x}/{y}.png (OSM proxy); nil disables it.

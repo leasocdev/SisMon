@@ -19,6 +19,7 @@ type stateResponse struct {
 	IntervalS int      `json:"interval_s"`
 	Version   string   `json:"version"`
 	Now       int64    `json:"now"`
+	Demo      bool     `json:"demo"`
 }
 
 func (p *public) state(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +29,7 @@ func (p *public) state(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, stateResponse{Snapshot: p.d.Hub.Snapshot(), Identity: id, IntervalS: p.d.Settings.Get().IntervalS,
-		Version: p.d.Version, Now: p.d.Now().UnixMilli()})
+		Version: p.d.Version, Now: p.d.Now().UnixMilli(), Demo: p.d.Demo})
 }
 
 type catalogDevice struct {

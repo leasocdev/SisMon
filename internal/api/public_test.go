@@ -320,3 +320,15 @@ func TestTilesRouteDelegates(t *testing.T) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 }
+
+func TestStateDemoFlag(t *testing.T) {
+	s := newServer(t)
+	if !strings.Contains(s.do("GET", "/api/state", nil, nil).Body.String(), `"demo":false`) {
+		t.Fatal("demo false expected")
+	}
+	s.d.Demo = true
+	s.h = build(s.d, nil)
+	if !strings.Contains(s.do("GET", "/api/state", nil, nil).Body.String(), `"demo":true`) {
+		t.Fatal("demo true expected")
+	}
+}

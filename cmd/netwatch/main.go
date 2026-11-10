@@ -22,6 +22,7 @@ Comenzi:
   set-password     Setează parola administratorului
   backup           Creează un backup imediat
   restore FIȘIER   Restaurează baza dintr-un backup
+  demo             Pornește o demonstrație cu date simulate (director demo-data, port 8502)
   version          Afișează versiunea
 
 Opțiuni comune: --data DIRECTOR, --listen ADRESĂ:PORT, --tls auto|files,
@@ -56,6 +57,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return cmdBackup(rest, stdout, stderr)
 	case "restore":
 		return cmdRestore(rest, stdout, stderr)
+	case "demo":
+		return cmdDemo(rest, stdout, stderr)
 	}
 	fmt.Fprintf(stderr, "Comandă necunoscută: %s\n\n%s", cmd, usage)
 	return 2
