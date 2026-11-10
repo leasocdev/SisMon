@@ -25,7 +25,7 @@
 <form class="auth card" onsubmit={submit}>
   <h1>Autentificare administrator</h1>
   {#if session.expired}<p class="notice warn" role="status">Sesiunea a expirat. Autentificați-vă din nou.</p>{/if}
-  {#if notice}<p class="notice" role="status">{notice}</p>{/if}
+  {#if notice || session.notice}<p class="notice" role="status">{notice || session.notice}</p>{/if}
   {#if session.info && !session.info.tls}
     <p class="notice warn">Conexiune necriptată: parola se transmite în clar în rețea. Porniți serverul cu --tls auto.</p>
   {/if}

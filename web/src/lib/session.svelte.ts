@@ -6,6 +6,8 @@ import type { SessionInfo } from './types';
 class Session {
   info = $state<SessionInfo | null>(null);
   expired = $state(false);
+  /** Shown on the login form (e.g. after a password change). */
+  notice = $state('');
 
   constructor() {
     setUnauthorizedHandler(() => {
@@ -26,6 +28,7 @@ class Session {
   private async started(r: { csrf: string }): Promise<void> {
     setCsrf(r.csrf);
     this.expired = false;
+    this.notice = '';
     await this.refresh();
   }
 
@@ -50,7 +53,8 @@ class Session {
   }
 
   /** After a password change the server closes every session. */
-  loggedOut(): void {
+  loggedOut(notice = ''): void {
+    this.notice = notice;
     setCsrf('');
     if (this.info) this.info = { ...this.info, authenticated: false };
   }
