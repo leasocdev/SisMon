@@ -77,6 +77,8 @@
         {/if}
       {/snippet}
     </Monitor>
+  {:else if router.route.name === 'map'}
+    {#await import('./pages/MapPage.svelte') then m}<m.default />{/await}
   {:else if router.route.name === 'dispatch'}
     <Dispatch />
   {:else}

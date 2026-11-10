@@ -56,6 +56,17 @@ test.describe('Dispecerat', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 
+  test('rotație grilă / hartă', async ({ page }) => {
+    await page.clock.install();
+    await page.goto('/dispecerat?rotatie=10');
+    await expect(page.locator('.tile').first()).toBeVisible();
+    await page.clock.fastForward(10_500);
+    await expect(page.locator('.leaflet-container')).toBeVisible();
+    await expect(page.locator('.tile').first()).toBeHidden();
+    await page.clock.fastForward(10_500);
+    await expect(page.locator('.tile').first()).toBeVisible();
+  });
+
   test('fără meniu, cu ceas', async ({ page }) => {
     await page.goto('/dispecerat');
     await expect(page.getByRole('navigation', { name: 'Navigare principală' })).toHaveCount(0);

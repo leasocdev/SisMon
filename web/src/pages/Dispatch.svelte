@@ -11,6 +11,9 @@
   import type { LocationView } from '../lib/types';
 
   const sound = router.route.query.sunet === '1';
+  const rotateS = Math.max(10, Number(router.route.query.rotatie) || 0);
+  const rotate = Number(router.route.query.rotatie) > 0;
+  let showMap = $state(false);
 
   let gridEl: HTMLDivElement;
   let size = $state({ w: 1600, h: 800 });
@@ -42,9 +45,13 @@
       soundPrefs.on = true;
       beeper.unlock();
     }
-    const ro = new ResizeObserver(() => (size = { w: gridEl.clientWidth, h: gridEl.clientHeight }));
+    const ro = new ResizeObserver(() => gridEl && (size = { w: gridEl.clientWidth, h: gridEl.clientHeight }));
     ro.observe(gridEl);
-    return () => ro.disconnect();
+    const rot = rotate ? setInterval(() => (showMap = !showMap), rotateS * 1000) : null;
+    return () => {
+      ro.disconnect();
+      if (rot) clearInterval(rot);
+    };
   });
 </script>
 
@@ -76,7 +83,12 @@
   {#if live.stale}
     <div class="stale-banner" role="alert">DATE NEACTUALIZATE</div>
   {/if}
-  <div class="grid" bind:this={gridEl} style:--cols={grid.cols} style:--rows={grid.rows} style:--font="{grid.fontPx}px">
+  {#if rotate}
+    <div class="mapbox" class:hidden={!showMap}>
+      {#await import('../components/MapView.svelte') then m}<m.default />{/await}
+    </div>
+  {/if}
+  <div class="grid" class:hidden={showMap} bind:this={gridEl} style:--cols={grid.cols} style:--rows={grid.rows} style:--font="{grid.fontPx}px">
     {#each locs as l (l.id)}
       {@const c = culprit(l)}
       <a class="tile f-{live.stale ? 'unknown' : l.state}" href="/locatie/{l.id}">
@@ -178,6 +190,14 @@
     padding: 6px;
     font-size: var(--font);
     overflow: hidden;
+  }
+  .hidden {
+    display: none;
+  }
+  .mapbox {
+    flex: 1;
+    min-height: 0;
+    padding: 6px;
   }
   .tile {
     display: flex;
