@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { errorText, fmtLatency, fmtPct, pendingText, sortLocations, stateText, totals } from './status';
+import { errorText, filterLocations, fmtLatency, fmtPct, pendingText, sortLocations, stateText, totals } from './status';
 import type { LocationView, State } from './types';
 
 function loc(id: number, name: string, state: State, sort_order = 0): LocationView {
@@ -48,5 +48,25 @@ describe('status', () => {
     expect(errorText('net_unreachable')).toBe('Rețea/rută inaccesibilă');
     expect(errorText('timeout')).toBe('Fără răspuns');
     expect(errorText('')).toBe('');
+  });
+});
+
+describe('filterLocations', () => {
+  const l = (id: number, name: string, state: State, hosts: string[]) => ({
+    ...loc(id, name, state),
+    devices: hosts.map((h, i) => ({
+      id: id * 10 + i, location_id: id, name: 'Dev' + i, host: h, kind: 'Router', is_primary: i === 0, state, pending: '' as const,
+      since: 0, last_check: null, latency_ms: null, loss_pct: null, error_code: '', dns_warning: false,
+    })),
+  });
+  const all = [l(1, 'Chișinău Centru', 'up', ['10.0.0.1']), l(2, 'Cahul', 'down', ['10.0.1.1']), l(3, 'Bălți', 'degraded', ['10.0.2.2'])];
+  it('by state set', () => {
+    expect(filterLocations(all, new Set(['down']), '').map((x) => x.id)).toEqual([2]);
+    expect(filterLocations(all, new Set(), '').map((x) => x.id)).toEqual([1, 2, 3]);
+  });
+  it('by text: name without diacritics, device host', () => {
+    expect(filterLocations(all, new Set(), 'chisinau').map((x) => x.id)).toEqual([1]);
+    expect(filterLocations(all, new Set(), '10.0.2.2').map((x) => x.id)).toEqual([3]);
+    expect(filterLocations(all, new Set(), 'BALTI').map((x) => x.id)).toEqual([3]);
   });
 });

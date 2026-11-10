@@ -3,6 +3,7 @@
   import Announcer from './components/Announcer.svelte';
   import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
+  import Monitor from './pages/Monitor.svelte';
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
   import { beeper, soundFor, soundPrefs } from './lib/sound.svelte';
@@ -64,6 +65,8 @@
       <h1>Pagina nu există</h1>
       <p><a href="/">Înapoi la monitorizare</a></p>
     </div>
+  {:else if router.route.name === 'monitor' || router.route.name === 'location'}
+    <Monitor />
   {:else}
     <div class="page"><h1>{titles[router.route.name]}</h1></div>
   {/if}

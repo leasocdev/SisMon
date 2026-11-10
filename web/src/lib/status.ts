@@ -95,3 +95,20 @@ const ERROR_TEXT: Record<string, string> = {
 export function errorText(code: string): string {
   return code ? (ERROR_TEXT[code] ?? code) : '';
 }
+
+/** Lower-case text without diacritics, for searching. */
+export function fold(s: string): string {
+  return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+/** Keeps locations whose state is in `states` (all if empty) and that match `q`
+ * on the location name, a device name or a device host. */
+export function filterLocations<T extends Pick<LocationView, 'name' | 'state' | 'devices'>>(list: T[], states: Set<string>, q: string): T[] {
+  const needle = fold(q.trim());
+  return list.filter((l) => {
+    if (states.size && !states.has(l.state)) return false;
+    if (!needle) return true;
+    if (fold(l.name).includes(needle)) return true;
+    return l.devices.some((d) => fold(d.name).includes(needle) || d.host.toLowerCase().includes(needle));
+  });
+}
