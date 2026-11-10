@@ -1,5 +1,6 @@
 import './styles/tokens.css';
 import './styles/base.css';
+import './styles/print.css';
 import { mount } from 'svelte';
 import App from './App.svelte';
 import { startRouter } from './lib/router.svelte';
