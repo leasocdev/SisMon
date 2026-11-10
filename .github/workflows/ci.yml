@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    name: Go (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Permite socket ICMP neprivilegiat (Linux)
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
+
+      - name: Teste cu detectorul de curse
+        env:
+          CGO_ENABLED: "1"
+          NETWATCH_REQUIRE_ICMP: "1"
+          NETWATCH_EXPECT_ICMP_MODE: ${{ runner.os == 'Linux' && 'linux-unprivileged' || 'windows' }}
+        run: go test -race -count=1 ./...
+
+      - name: ICMP real în modul raw socket (Linux, root)
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w net.ipv4.ping_group_range="1 0"
+          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)" \
+            NETWATCH_REQUIRE_ICMP=1 NETWATCH_EXPECT_ICMP_MODE=linux-raw \
+            go test -count=1 -run Real -v ./internal/monitor/icmp
+
+  web:
+    name: Interfață web (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Dependențe
+        working-directory: web
+        run: npm ci
+
+      - name: Verificare tipuri
+        working-directory: web
+        run: npm run check
+
+      - name: Teste unitare
+        working-directory: web
+        run: npm test
+
+      - name: Browser Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Teste end-to-end
+        working-directory: web
+        run: npm run e2e
+
+      - name: Rezultate Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: web/test-results
+          retention-days: 7
+
+  release:
+    name: Publicare versiune
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [go, web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build
+        run: go run ./tools/release --version "${GITHUB_REF_NAME#v}" --out dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: netwatch-${{ github.ref_name }}
+          path: dist/*
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

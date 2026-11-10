@@ -2,6 +2,7 @@ package icmp
 
 import (
 	"context"
+	"os"
 	"net/netip"
 	"testing"
 	"time"
@@ -17,6 +18,9 @@ func realPinger(t *testing.T) Pinger {
 		t.Skipf("no pinger: %v", err)
 	}
 	if p.Mode() == "unavailable" {
+		if os.Getenv("NETWATCH_REQUIRE_ICMP") != "" {
+			t.Fatal("ICMP unavailable but NETWATCH_REQUIRE_ICMP is set")
+		}
 		t.Skip("ICMP unavailable (permissions)")
 	}
 	return p
@@ -34,6 +38,9 @@ func TestRealLoopbackV6(t *testing.T) {
 	p := realPinger(t)
 	r := p.Ping(context.Background(), netip.MustParseAddr("::1"), 1, time.Second)
 	if r.Received < 1 {
+		if os.Getenv("NETWATCH_REQUIRE_ICMP") != "" {
+			t.Fatalf("IPv6 loopback did not answer: %+v", r)
+		}
 		t.Skipf("IPv6 loopback not answering here: %+v", r)
 	}
 }
@@ -54,5 +61,21 @@ func TestFakeAndContextCancel(t *testing.T) {
 	f := &Fake{Fn: func(netip.Addr) Result { return Result{Sent: 1, Received: 1} }}
 	if !f.Ping(context.Background(), netip.MustParseAddr("10.0.0.1"), 1, time.Second).OK() || f.Mode() != "fake" {
 		t.Fatal("fake")
+	}
+}
+
+// TestRealMode pins the pinger implementation CI expects on a runner
+// (NETWATCH_EXPECT_ICMP_MODE=windows|linux-unprivileged|linux-raw).
+func TestRealMode(t *testing.T) {
+	want := os.Getenv("NETWATCH_EXPECT_ICMP_MODE")
+	if want == "" {
+		t.Skip("NETWATCH_EXPECT_ICMP_MODE not set")
+	}
+	p, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Mode() != want {
+		t.Fatalf("mode %q, want %q", p.Mode(), want)
 	}
 }
