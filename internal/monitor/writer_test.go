@@ -268,3 +268,41 @@ func TestWriterUpdatesHub(t *testing.T) {
 		t.Fatalf("%+v %+v", dv, snap.Locations[0])
 	}
 }
+
+// Review fix: a rolled-back batch must not advance the in-memory machines.
+func TestWriterRollbackKeepsMemoryConsistent(t *testing.T) {
+	f := newFixture(t, settings.Defaults())
+	d := f.devs[0]
+	f.feed(t, okRes(d, step(0)), okRes(d, step(1)), failRes(d, step(2)), failRes(d, step(3)))
+	f.st.DB.Exec(`CREATE TRIGGER boom BEFORE INSERT ON incidents BEGIN SELECT RAISE(ABORT,'boom'); END`)
+	f.w.Submit(failRes(d, step(4)))
+	if err := f.w.Flush(context.Background()); err == nil {
+		t.Fatal("expected the batch to fail")
+	}
+	f.st.DB.Exec(`DROP TRIGGER boom`)
+	f.feed(t, failRes(d, step(5)))
+	in := f.incidents(t)
+	iv := f.intervals(t, store.EntityDevice, d)
+	if len(in) != 1 || iv[len(iv)-1].st != state.Down {
+		t.Fatalf("outage lost after rollback: incidents %+v intervals %+v", in, iv)
+	}
+}
+
+// Review fix: results of an old revision are dropped even before the writer
+// has reloaded the configuration.
+func TestWriterDropsResultsBeforeReload(t *testing.T) {
+	f := newFixture(t, settings.Defaults())
+	ctx := context.Background()
+	d := f.devs[0]
+	in := domain.LocationInput{Name: "Centru", Devices: []domain.DeviceInput{{ID: &d, Name: "D", Host: "10.9.9.9", Primary: true}}}
+	in.Normalize(settings.Defaults())
+	if _, err := f.st.SaveLocation(ctx, &f.loc, in, step(0)); err != nil {
+		t.Fatal(err)
+	}
+	f.feed(t, okRes(d, step(1))) // no Reload: in-memory rev is still 1
+	var n int
+	f.st.DB.QueryRow(`SELECT COUNT(*) FROM samples`).Scan(&n)
+	if n != 0 {
+		t.Fatalf("stale result stored: %d", n)
+	}
+}

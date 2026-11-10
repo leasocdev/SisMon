@@ -73,17 +73,16 @@ func (r *Runner) tickBackup(ctx context.Context, now time.Time) {
 		return
 	}
 	r.lastBackup = day
-	if list, err := r.b.List(); err == nil {
-		if err := r.b.Remove(Rotate(list, now)); err != nil {
-			slog.Warn("rotație backup", "err", err)
-		}
+	if err := r.b.RotateAll(now); err != nil {
+		slog.Warn("rotație backup", "err", err)
 	}
 	created := info.Created
 	r.onBackup(&created, r.b.Warning())
 }
 
 func (r *Runner) tickAggregate(ctx context.Context, now time.Time) {
-	last := now.UTC().Truncate(time.Hour).Add(-time.Hour) // last complete hour
+	// Last hour that ended at least 5 minutes ago, so late flushes are included.
+	last := now.Add(-5 * time.Minute).UTC().Truncate(time.Hour).Add(-time.Hour)
 	r.mu.Lock()
 	from := r.lastAgg
 	if from.IsZero() {

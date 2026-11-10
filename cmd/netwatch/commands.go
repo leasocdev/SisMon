@@ -21,6 +21,7 @@ import (
 	"netwatch/internal/apperr"
 	"netwatch/internal/auth"
 	"netwatch/internal/config"
+	"netwatch/internal/fsown"
 	"netwatch/internal/jobs"
 	"netwatch/internal/lockfile"
 	"netwatch/internal/restore"
@@ -146,6 +147,7 @@ func cmdSetPassword(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		return fail(stderr, err)
 	}
 	defer release()
+	defer fsown.MatchTree(cfg.DataDir) // runs after the store is closed
 	a, b, err := readPasswords(stdin, stdout)
 	if err != nil {
 		return fail(stderr, err)
@@ -190,6 +192,7 @@ func cmdBackup(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 	defer release()
+	defer fsown.MatchTree(cfg.DataDir)
 	ctx := context.Background()
 	st, err := app.OpenStore(ctx, cfg.DataDir)
 	if err != nil {
@@ -246,6 +249,7 @@ func cmdRestore(args []string, stdout, stderr io.Writer) int {
 		return fail(stderr, err)
 	}
 	pre, err := restore.Restore(context.Background(), cfg.DataDir, file)
+	fsown.MatchTree(cfg.DataDir)
 	release()
 	if err != nil {
 		return fail(stderr, err)

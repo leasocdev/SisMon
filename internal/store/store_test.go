@@ -6,6 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func openTemp(t *testing.T) *Store {
@@ -115,5 +116,61 @@ func TestVacuumInto(t *testing.T) {
 	c.QueryRow(`PRAGMA integrity_check`).Scan(&r)
 	if r != "ok" {
 		t.Fatalf("integrity %q", r)
+	}
+}
+
+// Review fix: read-then-write transactions must wait for the write lock
+// instead of failing with SQLITE_BUSY_SNAPSHOT.
+func TestImmediateTransactionsWait(t *testing.T) {
+	s := openTemp(t)
+	ctx := context.Background()
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM meta`).Scan(&n)
+	done := make(chan error, 1)
+	go func() { done <- s.SetMeta(ctx, "other", 1) }()
+	time.Sleep(200 * time.Millisecond)
+	if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO meta(key,value) VALUES('mine','1')`); err != nil {
+		t.Fatalf("write after concurrent commit failed: %v", err)
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("concurrent writer failed: %v", err)
+	}
+}
+
+// Review fix: 60 devices × 1 check/min × 90 days of raw samples must fit the
+// spec's 300 MB budget together with the rest of the data.
+func TestSamplesStorageBudget(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	s := openTemp(t)
+	ctx := context.Background()
+	tx, _ := s.DB.BeginTx(ctx, nil)
+	const days = 2
+	base := int64(1_800_000_000_000)
+	for m := int64(0); m < days*1440; m++ {
+		for d := int64(1); d <= 60; d++ {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO samples(device_id,ts,ok,latency_us,loss_pct,error_code) VALUES(?,?,1,?,0,'')`, d, base+m*60_000+d*37, 400+(m*7+d*13)%9000); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	tx.Commit()
+	s.DB.Exec(`VACUUM`)
+	var pages, size int64
+	s.DB.QueryRow(`PRAGMA page_count`).Scan(&pages)
+	s.DB.QueryRow(`PRAGMA page_size`).Scan(&size)
+	perRow := float64(pages*size) / float64(days*1440*60)
+	projected := perRow * 60 * 1440 * 90 / 1e6
+	t.Logf("%.1f bytes/row, 90-day projection %.0f MB", perRow, projected)
+	if projected > 250 {
+		t.Fatalf("raw samples alone project to %.0f MB (> 250 MB)", projected)
 	}
 }

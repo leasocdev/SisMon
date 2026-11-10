@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/subtle"
 	"math"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"netwatch/internal/apperr"
 	"netwatch/internal/auth"
@@ -99,11 +101,25 @@ func (a *admin) session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ci := a.d.Proxy.Client(r)
-	out := map[string]any{"authenticated": ok, "configured": hash != "", "setup_allowed": hash == "" && ci.DirectLoopback(r), "tls": ci.Scheme == "https"}
+	out := map[string]any{"authenticated": ok, "configured": hash != "", "setup_allowed": hash == "" && setupAllowed(r, ci), "tls": ci.Scheme == "https"}
 	if ok {
 		out["csrf"] = csrf
 	}
 	writeJSON(w, 200, out)
+}
+
+// setupAllowed: a direct loopback client that also addressed the server by a
+// loopback name — a DNS-rebinding page (foreign Host) is refused.
+func setupAllowed(r *http.Request, ci auth.ClientInfo) bool {
+	if !ci.DirectLoopback(r) {
+		return false
+	}
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.Trim(strings.ToLower(host), "[]")
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }
 
 type passwordBody struct {
@@ -127,7 +143,7 @@ func (a *admin) setup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	if hash != "" || !ci.DirectLoopback(r) || !auth.SameOrigin(r, ci) {
+	if hash != "" || !setupAllowed(r, ci) || !auth.SameOrigin(r, ci) {
 		writeError(w, apperr.Forbidden("Configurarea inițială este permisă doar de pe acest server (localhost), cât timp nu există parolă."))
 		return
 	}
@@ -174,6 +190,14 @@ func (a *admin) login(w http.ResponseWriter, r *http.Request) {
 	hash, err := a.passwordHash(r.Context())
 	if err != nil {
 		writeError(w, err)
+		return
+	}
+	select {
+	case a.d.loginSem <- struct{}{}:
+		defer func() { <-a.d.loginSem }()
+	default:
+		w.Header().Set("Retry-After", "1")
+		writeError(w, &apperr.Error{Status: http.StatusServiceUnavailable, Message: "Serverul verifică alte autentificări. Reîncercați peste o secundă."})
 		return
 	}
 	if hash == "" || !auth.VerifyPassword(hash, b.Password) {

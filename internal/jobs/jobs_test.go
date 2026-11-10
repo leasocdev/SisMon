@@ -131,11 +131,11 @@ func TestAggregateHour(t *testing.T) {
 	st, _ := setup(t)
 	h := time.Date(2026, 11, 9, 10, 0, 0, 0, time.UTC)
 	for i := 0; i < 60; i++ {
-		ok, lat := 1, any(float64(i+1))
+		ok, lat := 1, any((i+1)*1000)
 		if i < 6 {
 			ok, lat = 0, nil
 		}
-		st.DB.Exec(`INSERT INTO samples(device_id,ts,ok,latency_ms,loss_pct) VALUES(1,?,?,?,?)`, h.Add(time.Duration(i)*time.Minute).UnixMilli(), ok, lat, float64(100*(1-ok)))
+		st.DB.Exec(`INSERT INTO samples(device_id,ts,ok,latency_us,loss_pct) VALUES(1,?,?,?,?)`, h.Add(time.Duration(i)*time.Minute).UnixMilli(), ok, lat, float64(100*(1-ok)))
 	}
 	ctx := context.Background()
 	for i := 0; i < 2; i++ {
@@ -159,7 +159,7 @@ func TestRetentionOnlyAggregated(t *testing.T) {
 	old2 := old1.Add(time.Hour)
 	recent := now.Add(-time.Hour)
 	for _, ts := range []time.Time{old1, old1.Add(time.Minute), old2, recent} {
-		st.DB.Exec(`INSERT INTO samples(device_id,ts,ok,latency_ms,loss_pct) VALUES(1,?,1,1,0)`, ts.UnixMilli())
+		st.DB.Exec(`INSERT INTO samples(device_id,ts,ok,latency_us,loss_pct) VALUES(1,?,1,1000,0)`, ts.UnixMilli())
 	}
 	AggregateHour(ctx, st, old1)
 	n, err := Retention(ctx, st, now, 90*24*time.Hour)
@@ -201,5 +201,47 @@ func TestRunnerBackupRetryAfterFailure(t *testing.T) {
 	r.tickBackup(ctx, at3.Add(70*time.Minute))
 	if calls != 2 || reports[len(reports)-1] != "" {
 		t.Fatalf("calls %d reports %v", calls, reports)
+	}
+}
+
+// Review fix: copies in the secondary directory follow the same rotation.
+func TestRotateAllIncludesSecondary(t *testing.T) {
+	st, dir := setup(t)
+	s := settings.Defaults()
+	s.BackupSecondaryDir = filepath.Join(dir, "second")
+	b := NewBackupService(st, dir, settings.NewHolder(s))
+	now := time.Date(2026, 11, 9, 3, 0, 0, 0, Zone)
+	for _, d := range []string{b.Dir, s.BackupSecondaryDir} {
+		os.MkdirAll(d, 0o750)
+		for i := 0; i < 60; i++ {
+			name := "netwatch-" + now.AddDate(0, 0, -i).Format("20060102-150405") + "-auto.db"
+			os.WriteFile(filepath.Join(d, name), []byte("x"), 0o600)
+		}
+	}
+	if err := b.RotateAll(now); err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range []string{b.Dir, s.BackupSecondaryDir} {
+		entries, _ := os.ReadDir(d)
+		if len(entries) > 23 || len(entries) < 7 {
+			t.Fatalf("%s: %d files after rotation", d, len(entries))
+		}
+	}
+}
+
+// Review fix: an hour is aggregated only once it ended at least 5 minutes ago,
+// so results flushed late still land in it.
+func TestRunnerAggregatesOnlySettledHours(t *testing.T) {
+	st, dir := setup(t)
+	set := settings.NewHolder(settings.Defaults())
+	r := NewRunner(st, set, NewBackupService(st, dir, set), auth.NewSessions(st), nil)
+	now := time.Date(2026, 11, 9, 11, 2, 0, 0, time.UTC)
+	r.tickAggregate(context.Background(), now)
+	if want := time.Date(2026, 11, 9, 9, 0, 0, 0, time.UTC); !r.lastAgg.Equal(want) {
+		t.Fatalf("aggregated up to %v, want %v", r.lastAgg, want)
+	}
+	r.tickAggregate(context.Background(), now.Add(4*time.Minute)) // 11:06
+	if want := time.Date(2026, 11, 9, 10, 0, 0, 0, time.UTC); !r.lastAgg.Equal(want) {
+		t.Fatalf("aggregated up to %v, want %v", r.lastAgg, want)
 	}
 }

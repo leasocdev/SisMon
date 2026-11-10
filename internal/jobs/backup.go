@@ -213,3 +213,27 @@ func (b *BackupService) Remove(list []BackupInfo) error {
 	}
 	return nil
 }
+
+// listDir lists backups in dir, newest first.
+func listDir(dir string) ([]BackupInfo, error) {
+	b := &BackupService{Dir: dir}
+	return b.List()
+}
+
+// RotateAll applies the 7/4/12 rotation to the primary and secondary directories.
+func (b *BackupService) RotateAll(now time.Time) error {
+	dirs := []string{b.Dir}
+	if sec := b.set.Get().BackupSecondaryDir; sec != "" {
+		dirs = append(dirs, sec)
+	}
+	for _, d := range dirs {
+		list, err := listDir(d)
+		if err != nil {
+			return err
+		}
+		if err := (&BackupService{Dir: d}).Remove(Rotate(list, now)); err != nil {
+			return err
+		}
+	}
+	return nil
+}

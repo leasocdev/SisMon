@@ -33,7 +33,7 @@ func Latency(ctx context.Context, st *store.Store, deviceID int64, from, to time
 			w = max(span/maxPoints, time.Second)
 		}
 		wm := w.Milliseconds()
-		rows, err = st.DB.QueryContext(ctx, `SELECT ?2 + ((ts-?2)/?1)*?1 AS b, AVG(latency_ms), MIN(latency_ms), MAX(latency_ms), AVG(loss_pct)
+		rows, err = st.DB.QueryContext(ctx, `SELECT ?2 + ((ts-?2)/?1)*?1 AS b, AVG(latency_us)/1000.0, MIN(latency_us)/1000.0, MAX(latency_us)/1000.0, AVG(loss_pct)
 			FROM samples WHERE device_id=?4 AND ts>=?2 AND ts<?3 GROUP BY (ts-?2)/?1 ORDER BY b`, wm, a, b, deviceID)
 	default:
 		w := max(span/maxPoints, time.Hour)

@@ -151,7 +151,7 @@ func durations(ctx context.Context, q store.Querier, e store.Entity, id int64, w
 func latencyAvg(ctx context.Context, q store.Querier, id int64, w window) (lat, loss *float64, err error) {
 	var latSum, latN, lossSum, n sql.NullFloat64
 	err = q.QueryRowContext(ctx, `SELECT SUM(ls), SUM(ln), SUM(xs), SUM(xn) FROM (
-		SELECT SUM(latency_ms) ls, COUNT(latency_ms) ln, SUM(loss_pct) xs, COUNT(*) xn FROM samples WHERE device_id=?1 AND ts>=?2 AND ts<?3
+		SELECT SUM(latency_us)/1000.0 ls, COUNT(latency_us) ln, SUM(loss_pct) xs, COUNT(*) xn FROM samples WHERE device_id=?1 AND ts>=?2 AND ts<?3
 		UNION ALL
 		SELECT SUM(lat_avg*ok_checks), SUM(CASE WHEN lat_avg IS NULL THEN 0 ELSE ok_checks END), SUM(loss_avg*checks), SUM(checks)
 		FROM samples_hourly WHERE device_id=?1 AND hour_ts>=?2 AND hour_ts<?3

@@ -49,7 +49,13 @@ type Deps struct {
 	SSEPing time.Duration
 	// Sleep applies the login failure delay; nil means a real, ctx-aware sleep.
 	Sleep func(ctx context.Context, d time.Duration)
+
+	// loginSem caps concurrent password verifications (argon2id uses 64 MiB each).
+	loginSem chan struct{}
 }
+
+// LoginConcurrency is the number of password checks allowed at once.
+const LoginConcurrency = 2
 
 func realSleep(ctx context.Context, d time.Duration) {
 	t := time.NewTimer(d)
@@ -72,6 +78,9 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	}
 	if d.Sleep == nil {
 		d.Sleep = realSleep
+	}
+	if d.loginSem == nil {
+		d.loginSem = make(chan struct{}, LoginConcurrency)
 	}
 	mux := http.NewServeMux()
 	p := &public{d}

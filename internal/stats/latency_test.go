@@ -14,7 +14,7 @@ func TestLatencyResolution(t *testing.T) {
 	start := int64(1_000_000)
 	tx, _ := e.st.DB.Begin()
 	for i := int64(0); i < 3*1440; i++ {
-		tx.Exec(`INSERT INTO samples(device_id,ts,ok,latency_ms,loss_pct) VALUES(1,?,1,?,0)`, (start+i*60)*1000, float64(i%10+1))
+		tx.Exec(`INSERT INTO samples(device_id,ts,ok,latency_us,loss_pct) VALUES(1,?,1,?,0)`, (start+i*60)*1000, (i%10+1)*1000)
 	}
 	for h := int64(0); h < 30*24; h++ {
 		tx.Exec(`INSERT INTO samples_hourly(device_id,hour_ts,checks,ok_checks,lat_avg,lat_min,lat_max,loss_avg) VALUES(1,?,60,60,5,1,10,0)`, (start-31*86400+h*3600)*1000)

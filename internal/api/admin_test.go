@@ -139,8 +139,8 @@ func TestLoginRateLimit(t *testing.T) {
 func TestSetupOnlyLoopback(t *testing.T) {
 	s := newServer(t)
 	body := map[string]string{"password": testPassword}
-	lo := map[string]string{"Origin": "http://nw.local"}
-	w := s.doFrom("127.0.0.1:5000", "GET", "/api/admin/session", nil, nil)
+	lo := map[string]string{"Host": "localhost:8501", "Origin": "http://localhost:8501"}
+	w := s.doFrom("127.0.0.1:5000", "GET", "/api/admin/session", nil, map[string]string{"Host": "localhost:8501"})
 	if !strings.Contains(w.Body.String(), `"setup_allowed":true`) || !strings.Contains(w.Body.String(), `"configured":false`) {
 		t.Fatal(w.Body.String())
 	}
@@ -319,5 +319,34 @@ func decodeString(t *testing.T, body string, v any) {
 	t.Helper()
 	if err := json.Unmarshal([]byte(body), v); err != nil {
 		t.Fatalf("bad json %q: %v", body, err)
+	}
+}
+
+// Review fix: concurrent password hashing is capped (argon2id uses 64 MiB each).
+func TestLoginConcurrencyCap(t *testing.T) {
+	s := newServer(t)
+	s.setPassword(t)
+	s.d.loginSem = make(chan struct{}, 1)
+	s.d.loginSem <- struct{}{} // the only slot is busy
+	s.h = build(s.d, nil)
+	w := s.do("POST", "/api/admin/login", map[string]string{"password": testPassword}, origin)
+	if w.Code != 503 || w.Header().Get("Retry-After") == "" {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	<-s.d.loginSem
+	login(t, s)
+}
+
+// Review fix: initial setup must not be reachable through DNS rebinding.
+func TestSetupRejectsForeignHost(t *testing.T) {
+	s := newServer(t)
+	w := s.doFrom("127.0.0.1:5000", "POST", "/api/admin/setup", map[string]string{"password": testPassword},
+		map[string]string{"Host": "rebind.example:8501", "Origin": "http://rebind.example:8501"})
+	if w.Code != 403 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	w = s.doFrom("127.0.0.1:5000", "GET", "/api/admin/session", nil, map[string]string{"Host": "rebind.example:8501"})
+	if !strings.Contains(w.Body.String(), `"setup_allowed":false`) {
+		t.Fatal(w.Body.String())
 	}
 }

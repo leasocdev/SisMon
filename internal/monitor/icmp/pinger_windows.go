@@ -100,12 +100,19 @@ func echo6(h uintptr, addr netip.Addr, timeout time.Duration) (time.Duration, Co
 	if n == 0 {
 		return 0, classifyStatus(errno(err))
 	}
-	// ICMPV6_ECHO_REPLY: IPV6_ADDRESS_EX (26 bytes, packed) then Status, RoundTripTime.
-	status := binary.LittleEndian.Uint32(reply[26:30])
-	if code := classifyStatus(status); code != OK {
+	if code := reply6Code(reply); code != OK {
 		return 0, code
 	}
+	if rtt := binary.LittleEndian.Uint32(reply[32:36]); rtt > 0 {
+		return time.Duration(rtt) * time.Millisecond, OK
+	}
 	return elapsed, OK
+}
+
+// reply6Code reads ICMPV6_ECHO_REPLY.Status. IPV6_ADDRESS_EX is packed to 26
+// bytes; the outer struct aligns Status to offset 28 (RoundTripTime at 32).
+func reply6Code(reply []byte) Code {
+	return classifyStatus(binary.LittleEndian.Uint32(reply[28:32]))
 }
 
 func errno(err error) uint32 {

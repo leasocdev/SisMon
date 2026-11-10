@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"math"
 	"sync"
 	"time"
 
@@ -157,27 +158,69 @@ func (w *Writer) Flush(ctx context.Context) error {
 	}
 	tc := newTouched()
 	err := w.inTx(ctx, func(tx *sql.Tx) error {
+		revs, err := activeRevs(ctx, tx)
+		if err != nil {
+			return err
+		}
 		for _, r := range batch {
-			if err := w.apply(ctx, tx, r, tc); err != nil {
+			if err := w.apply(ctx, tx, r, tc, revs); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
+		// The batch rolled back: its working copies are discarded, memory
+		// still matches the database.
 		w.lastErr = err.Error()
-		// Reload machines from the database: the rolled-back batch must not linger in memory.
-		w.mu.Unlock()
-		rerr := w.Reload(ctx)
-		w.mu.Lock()
-		if rerr != nil {
-			slog.Error("reîncărcare după eroare", "err", rerr)
-		}
 		return err
 	}
+	w.commit(tc)
 	w.lastFlush = w.now()
 	w.publish(ctx, tc)
 	return nil
+}
+
+// activeRevs reads the current revision of every active device inside the
+// batch transaction, so results of a configuration that changed (or was
+// archived) after the check started are dropped even before Reload runs.
+func activeRevs(ctx context.Context, tx *sql.Tx) (map[int64]int64, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT id,rev FROM devices WHERE archived_at IS NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]int64{}
+	for rows.Next() {
+		var id, rev int64
+		if err := rows.Scan(&id, &rev); err != nil {
+			return nil, err
+		}
+		out[id] = rev
+	}
+	return out, rows.Err()
+}
+
+// work returns the batch's working copy of a device, cloning it on first use.
+func (w *Writer) work(tc *touched, id int64) *devInfo {
+	if c, ok := tc.devices[id]; ok {
+		return c
+	}
+	orig := w.devices[id]
+	c := *orig
+	m := *orig.machine
+	c.machine = &m
+	tc.devices[id] = &c
+	return &c
+}
+
+// commit installs the working copies after the transaction committed.
+func (w *Writer) commit(tc *touched) {
+	for id, c := range tc.devices {
+		if cur, ok := w.devices[id]; ok && cur.rev == c.rev {
+			w.devices[id] = c
+		}
+	}
 }
 
 func (w *Writer) inTx(ctx context.Context, fn func(*sql.Tx) error) error {
@@ -201,11 +244,12 @@ func (w *Writer) effective(info *devInfo) settings.Effective {
 	return e
 }
 
-func (w *Writer) apply(ctx context.Context, tx *sql.Tx, r Result, tc *touched) error {
-	info, ok := w.devices[r.DeviceID]
-	if !ok || info.rev != r.Rev {
+func (w *Writer) apply(ctx context.Context, tx *sql.Tx, r Result, tc *touched, revs map[int64]int64) error {
+	orig, ok := w.devices[r.DeviceID]
+	if !ok || orig.rev != r.Rev || revs[r.DeviceID] != r.Rev {
 		return nil // archived or reconfigured while the check was in flight
 	}
+	info := w.work(tc, r.DeviceID)
 	eff := w.effective(info)
 	if lc := info.status.LastCheck; lc != nil && time.UnixMilli(*lc).Add(eff.Stale).Before(r.At) {
 		if err := w.expire(ctx, tx, r.DeviceID, info, time.UnixMilli(*lc).Add(eff.Stale), tc); err != nil {
@@ -213,8 +257,12 @@ func (w *Writer) apply(ctx context.Context, tx *sql.Tx, r Result, tc *touched) e
 		}
 	}
 	p := r.Ping
-	if _, err := tx.ExecContext(ctx, `INSERT INTO samples(device_id,ts,ok,latency_ms,loss_pct,error_code) VALUES(?,?,?,?,?,?)`,
-		r.DeviceID, store.Ms(r.At), p.OK(), p.LatencyMs, p.LossPct(), string(p.Code)); err != nil {
+	var latUs any
+	if p.LatencyMs != nil {
+		latUs = int64(math.Round(*p.LatencyMs * 1000))
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT OR REPLACE INTO samples(device_id,ts,ok,latency_us,loss_pct,error_code) VALUES(?,?,?,?,?,?)`,
+		r.DeviceID, store.Ms(r.At), p.OK(), latUs, p.LossPct(), string(p.Code)); err != nil {
 		return err
 	}
 	tr := info.machine.Apply(state.Check{At: r.At, OK: p.OK(), MonitorError: p.MonitorError()},
@@ -247,7 +295,6 @@ func (w *Writer) apply(ctx context.Context, tx *sql.Tx, r Result, tc *touched) e
 		}
 		tc.locations[info.locationID] = true
 	}
-	tc.devices[r.DeviceID] = info
 	return nil
 }
 
@@ -293,7 +340,6 @@ func (w *Writer) expire(ctx context.Context, tx *sql.Tx, id int64, info *devInfo
 		}
 		tc.locations[info.locationID] = true
 	}
-	tc.devices[id] = info
 	return nil
 }
 
@@ -304,24 +350,30 @@ func (w *Writer) ExpireGaps(ctx context.Context, now time.Time) error {
 	defer w.mu.Unlock()
 	tc := newTouched()
 	err := w.inTx(ctx, func(tx *sql.Tx) error {
+		revs, err := activeRevs(ctx, tx)
+		if err != nil {
+			return err
+		}
 		for id, info := range w.devices {
 			lc := info.status.LastCheck
-			if lc == nil {
+			if lc == nil || revs[id] != info.rev {
 				continue
 			}
 			g := time.UnixMilli(*lc).Add(w.effective(info).Stale)
 			if g.After(now) || (info.machine.State == state.Unknown && info.machine.Streak == 0) {
 				continue
 			}
-			if err := w.expire(ctx, tx, id, info, g, tc); err != nil {
+			if err := w.expire(ctx, tx, id, w.work(tc, id), g, tc); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
 	if err != nil {
+		w.lastErr = err.Error()
 		return err
 	}
+	w.commit(tc)
 	w.publish(ctx, tc)
 	return nil
 }

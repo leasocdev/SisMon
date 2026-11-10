@@ -103,6 +103,10 @@ func (s *testServer) do(method, path string, body any, hdr map[string]string) *h
 	req := httptest.NewRequest(method, "http://nw.local"+path, rd)
 	req.RemoteAddr = testRemote
 	for k, v := range hdr {
+		if k == "Host" {
+			req.Host = v
+			continue
+		}
 		req.Header.Set(k, v)
 	}
 	if rd != nil && req.Header.Get("Content-Type") == "" {

@@ -46,6 +46,9 @@ func DSN(path string) string {
 	for _, p := range []string{"busy_timeout(5000)", "journal_mode(WAL)", "foreign_keys(1)", "synchronous(NORMAL)"} {
 		q.Add("_pragma", p)
 	}
+	// IMMEDIATE: read-then-write transactions wait for the lock instead of
+	// failing with SQLITE_BUSY_SNAPSHOT. Read-only transactions stay deferred.
+	q.Set("_txlock", "immediate")
 	return "file:" + filepath.ToSlash(path) + "?" + q.Encode()
 }
 

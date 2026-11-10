@@ -54,15 +54,16 @@ CREATE TABLE state_intervals(
 CREATE INDEX state_intervals_lookup ON state_intervals(entity, entity_id, start_at);
 CREATE UNIQUE INDEX state_intervals_open ON state_intervals(entity, entity_id) WHERE end_at IS NULL;
 
+-- Compact raw samples: latency in integer microseconds, clustered by key.
 CREATE TABLE samples(
   device_id INTEGER NOT NULL,
   ts INTEGER NOT NULL,
   ok INTEGER NOT NULL,
-  latency_ms REAL,
+  latency_us INTEGER,
   loss_pct REAL NOT NULL,
-  error_code TEXT NOT NULL DEFAULT ''
-);
-CREATE INDEX samples_device_ts ON samples(device_id, ts);
+  error_code TEXT NOT NULL DEFAULT '',
+  PRIMARY KEY(device_id, ts)
+) WITHOUT ROWID;
 
 CREATE TABLE samples_hourly(
   device_id INTEGER NOT NULL,
