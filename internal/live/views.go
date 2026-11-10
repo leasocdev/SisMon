@@ -58,6 +58,7 @@ type Event struct {
 
 // Snapshot is the full current state.
 type Snapshot struct {
+	Epoch     int64          `json:"epoch"`
 	Seq       uint64         `json:"seq"`
 	Locations []LocationView `json:"locations"`
 	Health    Health         `json:"health"`

@@ -19,6 +19,7 @@ const (
 
 // Hub holds the live state and publishes changes.
 type Hub struct {
+	epoch   int64
 	mu      sync.Mutex
 	seq     uint64
 	locs    map[int64]*LocationView
@@ -30,7 +31,7 @@ type Hub struct {
 
 // NewHub returns an empty hub.
 func NewHub() *Hub {
-	return &Hub{locs: map[int64]*LocationView{}, subs: map[int]chan Event{}}
+	return &Hub{epoch: time.Now().UnixMilli(), locs: map[int64]*LocationView{}, subs: map[int]chan Event{}}
 }
 
 func (h *Hub) publish(typ string, data any) {
@@ -125,6 +126,9 @@ func (h *Hub) SetHealth(hl Health) {
 	h.publish("health", hl)
 }
 
+// Epoch identifies this hub instance (ms at creation); SSE ids are "epoch-seq".
+func (h *Hub) Epoch() int64 { return h.epoch }
+
 // Health returns the current monitor health.
 func (h *Hub) Health() Health {
 	h.mu.Lock()
@@ -136,7 +140,7 @@ func (h *Hub) Health() Health {
 func (h *Hub) Snapshot() Snapshot {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	out := Snapshot{Seq: h.seq, Health: h.health, Locations: make([]LocationView, 0, len(h.locs))}
+	out := Snapshot{Epoch: h.epoch, Seq: h.seq, Health: h.health, Locations: make([]LocationView, 0, len(h.locs))}
 	for _, l := range h.locs {
 		out.Locations = append(out.Locations, copyLoc(l))
 	}
