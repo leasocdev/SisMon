@@ -21,7 +21,12 @@
   // system live, and the dispatch screen is dark.
   let chosen = $state<Theme | null>(queryTheme ?? validTheme(storedTheme()));
   let systemDark = $state(media?.matches ?? false);
-  const theme = $derived(chosen ?? effectiveTheme(null, systemDark, router.route.name));
+  const sysTheme = $derived<Theme>(systemDark ? 'dark' : 'light');
+  // The dispatch screen follows the administrator's scheme (a ?tema in the URL still wins).
+  const dispatchTheme = $derived<Theme>(live.dispatchTheme === 'system' ? sysTheme : live.dispatchTheme);
+  const theme = $derived(
+    router.route.name === 'dispatch' ? (queryTheme ?? dispatchTheme) : (chosen ?? effectiveTheme(null, systemDark, router.route.name)),
+  );
 
   $effect(() => applyTheme(theme));
 

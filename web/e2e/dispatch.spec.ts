@@ -3,11 +3,12 @@ import { adminApi, control, createLocation, expect, setHost, test } from './fixt
 test.describe('Dispecerat', () => {
   test.use({ viewport: { width: 1920, height: 1080 } });
 
-  test('bandă cu problemele curente', async ({ page }) => {
+  test('bara de sus nu mai listează locațiile cu probleme', async ({ page }) => {
     await page.goto('/dispecerat');
     await expect(page.locator('.tile', { hasText: 'Cahul' })).toContainText('Funcțională');
     await setHost('10.0.1.1', 'timeout');
-    await expect(page.locator('.band')).toContainText('Cahul · Router · de', { timeout: 20_000 });
+    await expect(page.locator('.tile', { hasText: 'Cahul' })).not.toContainText('Funcțională', { timeout: 20_000 });
+    await expect(page.locator('.band')).toHaveCount(0);
   });
 
   test.describe('conexiune', () => {
@@ -81,24 +82,6 @@ test.describe('Dispecerat', () => {
     await expect(page.getByRole('navigation', { name: 'Navigare principală' })).toHaveCount(0);
     await expect(page.locator('.clock')).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
   });
-});
-
-test('banda de probleme arată +N pentru ce nu încape', async ({ page }) => {
-  const api = await adminApi();
-  const ids: number[] = [];
-  try {
-    for (let i = 0; i < 12; i++) {
-      const host = `10.3.${i}.1`;
-      await setHost(host, 'timeout');
-      ids.push(await createLocation(api, { name: `Căzută cu nume lung ${String(i + 1).padStart(2, '0')}`, devices: [{ name: 'Router', host }] }));
-    }
-    await page.setViewportSize({ width: 1280, height: 720 });
-    await page.goto('/dispecerat');
-    await expect(page.locator('.band .more')).toHaveText(/^\+\d+$/, { timeout: 25_000 });
-  } finally {
-    for (const id of ids) await api.send('DELETE', `/api/admin/locations/${id}`);
-    await api.dispose();
-  }
 });
 
 test.describe('temă', () => {

@@ -1,17 +1,19 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount } from 'svelte';
   import ConnectionBadge from '../components/ConnectionBadge.svelte';
   import LoadFailed from '../components/LoadFailed.svelte';
   import DemoBanner from '../components/DemoBanner.svelte';
   import { computeGrid } from '../lib/grid';
   import { live } from '../lib/live.svelte';
   import { router } from '../lib/router.svelte';
-  import { errorText, severity, sortLocations, STATE_LABEL, STATE_SYMBOL } from '../lib/status';
+  import { errorText, sortLocations, STATE_LABEL, STATE_SYMBOL } from '../lib/status';
   import { fmtDate, fmtSince, fmtTime } from '../lib/time';
   import type { LocationView } from '../lib/types';
 
-  const rotateS = Math.max(10, Number(router.route.query.rotatie) || 0);
-  const rotate = Number(router.route.query.rotatie) > 0;
+  // ?rotatie=N in the URL overrides the administrator's setting.
+  const queryRot = Number(router.route.query.rotatie);
+  const rotateS = $derived(Math.max(10, queryRot > 0 ? queryRot : live.rotationS));
+  const rotate = $derived(queryRot > 0 || live.rotationS > 0);
   let showMap = $state(false);
 
   let gridEl: HTMLDivElement;
@@ -20,51 +22,13 @@
 
   const now = $derived((live.tick, live.serverNow()));
   const locs = $derived(sortLocations(live.locations, 'severity'));
-  const problems = $derived(locs.filter((l) => severity(l.state) < 2));
   const grid = $derived(computeGrid(locs.length, size.w, size.h));
-
-  // Problem band: show what fits on one line and a "+N" counter for the rest.
-  let itemsEl = $state<HTMLDivElement>();
-  let visible = $state(Infinity);
-  let moreEl = $state<HTMLSpanElement>();
-  function measure() {
-    if (!itemsEl) {
-      visible = Infinity;
-      return;
-    }
-    const kids = [...itemsEl.children] as HTMLElement[];
-    const fits = (limit: number) => {
-      let n = 0;
-      for (const k of kids) {
-        if (k.offsetLeft + k.offsetWidth > limit) break;
-        n++;
-      }
-      return n;
-    };
-    // width available if the "+N" badge were not shown, and the badge width
-    const badge = moreEl ? moreEl.offsetWidth + 6 : 0;
-    const full = itemsEl.clientWidth + badge;
-    if (fits(full) >= kids.length) {
-      visible = Infinity;
-      return;
-    }
-    visible = fits(full - Math.max(badge, 64));
-  }
-  $effect(() => {
-    void problems.length;
-    void size.w;
-    tick().then(measure);
-  });
 
   /** The device explaining a location's problem, for the band. */
   function culprit(l: LocationView) {
     const primaryDown = l.devices.find((d) => d.is_primary && d.state === 'down');
     if (primaryDown) return primaryDown;
     return l.devices.find((d) => d.state === 'down') ?? l.devices.find((d) => d.state !== 'up');
-  }
-
-  function problemSince(l: LocationView): number {
-    return l.since || culprit(l)?.since || now;
   }
 
   function fullscreen() {
@@ -75,11 +39,15 @@
   onMount(() => {
     const ro = new ResizeObserver(() => gridEl && (size = { w: gridEl.clientWidth, h: gridEl.clientHeight }));
     ro.observe(gridEl);
-    const rot = rotate ? setInterval(() => (showMap = !showMap), rotateS * 1000) : null;
-    return () => {
-      ro.disconnect();
-      if (rot) clearInterval(rot);
-    };
+    return () => ro.disconnect();
+  });
+  $effect(() => {
+    if (!rotate) {
+      showMap = false;
+      return;
+    }
+    const rot = setInterval(() => (showMap = !showMap), rotateS * 1000);
+    return () => clearInterval(rot);
   });
 </script>
 
@@ -89,28 +57,17 @@
   <header class="top">
     <div class="ident">
       {#if live.identity.logo_version > 0}<img class="dlogo" src="/branding/logo?v={live.identity.logo_version}" alt="" />{/if}
-      <span class="name">{live.identity.name}</span>
-      <span class="date">{fmtDate(now)}</span>
-    </div>
-    <div class="band" aria-label="Locații cu probleme">
-      {#if problems.length === 0}
-        <span class="ok">✓ Toate locațiile funcționează</span>
-      {:else}
-        <div class="items" bind:this={itemsEl}>
-          {#each problems as l, i (l.id)}
-            <span class="prob f-{l.state}" class:cut={i >= visible}>
-              {l.name} · {culprit(l)?.name ?? STATE_LABEL[l.state]} · {fmtSince(problemSince(l), now)}
-            </span>
-          {/each}
-        </div>
-        {#if visible < problems.length}
-          <span class="more" bind:this={moreEl} title="Încă {problems.length - visible} locații cu probleme">+{problems.length - visible}</span>
-        {/if}
-      {/if}
+      <span class="texts">
+        <span class="name">{live.identity.name}</span>
+        {#if live.identity.subtitle}<span class="sub">{live.identity.subtitle}</span>{/if}
+      </span>
     </div>
     <div class="right">
       <ConnectionBadge large />
-      <span class="clock" aria-label="Ora curentă (Europe/Chisinau)">{fmtTime(now, true)}</span>
+      <div class="when">
+        <span class="clock" aria-label="Ora curentă (Europe/Chisinau)">{fmtTime(now, true)}</span>
+        <span class="date">{fmtDate(now)}</span>
+      </div>
       <button type="button" class="fs" onclick={fullscreen} aria-label="Ecran complet">⛶</button>
     </div>
   </header>
@@ -159,8 +116,13 @@
   }
   .ident {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 10px;
     line-height: 1.1;
+  }
+  .texts {
+    display: flex;
+    flex-direction: column;
   }
   .name {
     font-weight: 700;
@@ -170,48 +132,24 @@
     height: 40px;
     max-width: 140px;
     object-fit: contain;
+    object-position: left center;
+  }
+  .sub {
+    font-size: 0.72em;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .when {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.1;
   }
   .date {
     color: var(--muted);
   }
-  .band {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 1.1em;
-  }
-  .items {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    gap: 6px;
-    overflow: hidden;
-    white-space: nowrap;
-  }
-  .cut {
-    visibility: hidden;
-  }
-  .more {
-    flex-shrink: 0;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 4px;
-    background: var(--c-down);
-    color: var(--on-down);
-  }
-  .prob {
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-weight: 600;
-  }
-  .ok {
-    color: var(--c-up);
-    font-weight: 600;
-  }
   .right {
+    margin-left: auto;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -255,7 +193,6 @@
   .mapbox {
     flex: 1;
     min-height: 0;
-    padding: 6px;
   }
   .tile {
     display: flex;

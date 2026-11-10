@@ -133,7 +133,7 @@
     if (!ready || !located.length) return;
     map.invalidateSize();
     const b = L.latLngBounds(located.map((l) => [l.lat!, l.lon!] as [number, number]));
-    map.fitBounds(b, { padding: [24, 24], maxZoom: located.length === 1 ? 14 : 17, animate });
+    map.fitBounds(b, { padding: [12, 12], maxZoom: located.length === 1 ? 14 : 17, animate });
   }
 
   function sync(list: LocationView[]) {
@@ -206,7 +206,7 @@
     loadLeaflet().then((lib) => {
       if (!alive) return;
       L = lib;
-      map = L.map(host, { minZoom: 2, maxZoom: 18, worldCopyJump: true }).setView([47.0, 28.5], 7);
+      map = L.map(host, { minZoom: 2, maxZoom: 18, worldCopyJump: true, zoomControl: false, zoomSnap: 0.1, zoomDelta: 1 }).setView([47.0, 28.5], 7);
       map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
       tiles = L.tileLayer('/tiles/{z}/{x}/{y}.png', {
         minZoom: 2,
@@ -226,31 +226,45 @@
         if (health.shouldFallback(Date.now())) enterFallback();
       });
       tiles.addTo(map);
-      const Recenter = L.Control.extend({
+      const Tools = L.Control.extend({
         onAdd() {
-          const b = el('button', 'nw-recenter', '⌖ Centrează');
-          b.type = 'button';
-          b.title = 'Încadrează toate locațiile în fereastră';
-          L.DomEvent.disableClickPropagation(b);
-          b.addEventListener('click', () => recenter());
-          return b;
-        },
-      });
-      new Recenter({ position: 'topright' }).addTo(map);
-      const Full = L.Control.extend({
-        onAdd() {
-          const b = el('button', 'nw-recenter', '⛶ Ecran complet');
-          b.type = 'button';
-          b.title = 'Ecran complet (Esc pentru ieșire)';
-          L.DomEvent.disableClickPropagation(b);
-          b.addEventListener('click', toggleFullscreen);
+          const bar = el('div', 'leaflet-bar nw-tools');
+          const btn = (label: string, title: string, fn: () => void) => {
+            const b = el('a', '', label);
+            b.href = '#';
+            b.role = 'button';
+            b.title = title;
+            b.setAttribute('aria-label', title);
+            b.addEventListener('click', (e) => {
+              e.preventDefault();
+              if (!b.classList.contains('leaflet-disabled')) fn();
+            });
+            bar.append(b);
+            return b;
+          };
+          const zin = btn('+', 'Mărește', () => map.zoomIn());
+          const zout = btn('−', 'Micșorează', () => map.zoomOut());
+          btn('⌖', 'Centrează: încadrează toate locațiile în fereastră', () => recenter());
+          const full = btn('⛶', 'Ecran complet (Esc pentru ieșire)', toggleFullscreen);
+          const limits = () => {
+            zin.classList.toggle('leaflet-disabled', map.getZoom() >= map.getMaxZoom());
+            zout.classList.toggle('leaflet-disabled', map.getZoom() <= map.getMinZoom());
+          };
+          map.on('zoomend', limits);
+          limits();
           document.addEventListener('fullscreenchange', () => {
-            b.textContent = document.fullscreenElement ? '⛶ Ieșire ecran complet' : '⛶ Ecran complet';
+            const on = !!document.fullscreenElement;
+            const t = on ? 'Ieșire din ecran complet' : 'Ecran complet (Esc pentru ieșire)';
+            full.title = t;
+            full.setAttribute('aria-label', t);
+            // the box just changed size: refit so the sites sit close to the new edges
+            setTimeout(() => recenter(false), 100);
           });
-          return b;
+          L.DomEvent.disableClickPropagation(bar);
+          return bar;
         },
       });
-      new Full({ position: 'topright' }).addTo(map);
+      new Tools({ position: 'topright' }).addTo(map);
       map.on('moveend zoomend resize', scheduleLabels);
       cluster = L.markerClusterGroup({ iconCreateFunction: clusterIcon, maxClusterRadius: 40, showCoverageOnHover: false });
       map.addLayer(cluster);
@@ -399,17 +413,15 @@
     left: 50%;
     transform: translateX(-50%);
   }
-  :global(.nw-recenter) {
-    font: inherit;
+  :global(.nw-tools a) {
     font-weight: 700;
-    padding: 7px 12px;
-    background: var(--surface);
-    color: var(--fg);
-    border: 2px solid rgb(0 0 0 / 0.35);
-    border-radius: 4px;
     cursor: pointer;
   }
-  :global(.nw-recenter:hover) {
+  :global(.nw-tools a:not(.leaflet-disabled)) {
+    background: var(--surface);
+    color: var(--fg);
+  }
+  :global(.nw-tools a:not(.leaflet-disabled):hover) {
     background: var(--surface-2);
   }
   :global(.nw-popup ul) {

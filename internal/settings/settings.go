@@ -21,6 +21,10 @@ type Settings struct {
 	PreferIPv4         bool   `json:"prefer_ipv4"`
 	BackupHour         int    `json:"backup_hour"`
 	BackupSecondaryDir string `json:"backup_secondary_dir"`
+	// DispatchRotationS is the Dispecerat grid/map rotation period; 0 = off.
+	DispatchRotationS int `json:"dispatch_rotation_s"`
+	// DispatchTheme is the Dispecerat color scheme: "dark", "light" or "system".
+	DispatchTheme string `json:"dispatch_theme"`
 }
 
 // Overrides are optional per-device thresholds.
@@ -47,7 +51,7 @@ const DNSTimeout = 2 * time.Second
 // Defaults returns the spec defaults.
 func Defaults() Settings {
 	return Settings{IntervalS: 60, Packets: 3, TimeoutS: 2, Failures: 3, Recoveries: 2, StaleS: 300,
-		IncidentsFor: "all", PreferIPv4: true, BackupHour: 3}
+		IncidentsFor: "all", PreferIPv4: true, BackupHour: 3, DispatchTheme: "dark"}
 }
 
 type limit struct {
@@ -78,6 +82,16 @@ func (s Settings) Validate() error {
 		{"backup_hour", s.BackupHour, 0, 23, "Ora backup-ului"},
 	}); err != nil {
 		return err
+	}
+	if s.DispatchRotationS != 0 {
+		if err := checkLimits([]limit{{"dispatch_rotation_s", s.DispatchRotationS, 10, 3600, "Rotația din Dispecerat (secunde)"}}); err != nil {
+			return err
+		}
+	}
+	switch s.DispatchTheme {
+	case "", "dark", "light", "system": // empty (older data) means dark
+	default:
+		return apperr.Invalid("dispatch_theme", "Schema de culori a Dispeceratului este „întunecată”, „luminoasă” sau „ca sistemul”.")
 	}
 	if s.IncidentsFor != "all" && s.IncidentsFor != "primary" {
 		return apperr.Invalid("incidents_for", "Incidentele se deschid pentru „toate” echipamentele sau „doar primare”.")

@@ -81,7 +81,7 @@ trusted_proxy = ["10.0.0.5"]
 
 `netwatch install` salvează în serviciu opțiunile primite la instalare. Pentru a le schimba ulterior, editați `netwatch.toml` și reporniți serviciul (`netwatch stop`, apoi `netwatch start`).
 
-Setările de monitorizare (interval, pachete, praguri, expirare, ora backup-ului) se modifică din **Administrare → Setări monitorizare** și se aplică imediat.
+Setările de monitorizare (interval, pachete, praguri, expirare, ora backup-ului, rotația și schema de culori ale Dispeceratului) se modifică din **Administrare → Setări monitorizare** și se aplică imediat.
 
 ## 4. Reverse proxy (opțional)
 
@@ -177,12 +177,21 @@ Fluxul SSE (`/api/events`) trimite `snapshot`, `state`, `removed`, `health` și 
 
 ## 11. Ecranul de dispecerat
 
-Adresa: `http://SERVER:8501/dispecerat`. Opțiuni în URL, combinabile:
+Adresa: `http://SERVER:8501/dispecerat`. Antetul arată logo-ul, denumirea și subtitlul din Identitate, iar în dreapta starea conexiunii, ora și data. Locațiile cu probleme se văd pe plăcile din grilă.
+
+Setări permanente, în **Administrare → Setări monitorizare** (se aplică imediat, și pe ecranele deja deschise):
+
+| Setare | Efect |
+|---|---|
+| Rotația din Dispecerat (s) | `0` = oprită (implicit); 10–3600 alternează grila cu harta la acest interval |
+| Schema de culori a Dispeceratului | întunecată (implicit), luminoasă sau ca sistemul de operare |
+
+Opțiuni în URL, combinabile, care au prioritate față de setări (utile pentru un ecran anume):
 
 | Opțiune | Efect |
 |---|---|
 | `?rotatie=60` | alternează grila cu harta la fiecare 60 s (minimum 10) |
-| `?tema=luminoasa` | tema luminoasă (implicit: întunecată) |
+| `?tema=luminoasa` / `?tema=intunecata` | forțează tema |
 
 Exemplu de mod kiosk (Chrome/Edge):
 

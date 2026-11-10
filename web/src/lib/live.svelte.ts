@@ -1,6 +1,6 @@
 // Live state: one SSE stream for the whole app.
 
-import type { Health, Identity, LocationView, Snapshot, StateResponse } from './types';
+import type { DispatchTheme, Health, Identity, LocationView, Snapshot, StateResponse } from './types';
 
 export interface LiveData {
   locations: LocationView[];
@@ -71,6 +71,8 @@ export class LiveStore {
   health = $state<Health>(EMPTY_HEALTH);
   identity = $state<Identity>({ name: 'NetWatch', subtitle: 'NETWORK MONITOR', report_title: 'Raport de disponibilitate', logo_version: 0 });
   intervalS = $state(60);
+  rotationS = $state(0);
+  dispatchTheme = $state<DispatchTheme>('dark');
   version = $state('');
   demo = $state(false);
   epoch = $state(0);
@@ -162,6 +164,8 @@ export class LiveStore {
     }
     this.identity = s.identity;
     this.intervalS = s.interval_s;
+    this.rotationS = s.dispatch_rotation_s ?? 0;
+    this.dispatchTheme = s.dispatch_theme ?? 'dark';
     this.version = s.version;
     this.demo = !!s.demo;
     this.clockOffset = s.now - this.deps.now();

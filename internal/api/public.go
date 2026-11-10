@@ -15,11 +15,13 @@ type public struct{ d Deps }
 
 type stateResponse struct {
 	live.Snapshot
-	Identity  Identity `json:"identity"`
-	IntervalS int      `json:"interval_s"`
-	Version   string   `json:"version"`
-	Now       int64    `json:"now"`
-	Demo      bool     `json:"demo"`
+	Identity          Identity `json:"identity"`
+	IntervalS         int      `json:"interval_s"`
+	DispatchRotationS int      `json:"dispatch_rotation_s"`
+	DispatchTheme     string   `json:"dispatch_theme"`
+	Version           string   `json:"version"`
+	Now               int64    `json:"now"`
+	Demo              bool     `json:"demo"`
 }
 
 func (p *public) state(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +30,7 @@ func (p *public) state(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, 200, stateResponse{Snapshot: p.d.Hub.Snapshot(), Identity: id, IntervalS: p.d.Settings.Get().IntervalS,
+	writeJSON(w, 200, stateResponse{Snapshot: p.d.Hub.Snapshot(), Identity: id, IntervalS: p.d.Settings.Get().IntervalS, DispatchRotationS: p.d.Settings.Get().DispatchRotationS, DispatchTheme: cmpOr(p.d.Settings.Get().DispatchTheme, "dark"),
 		Version: p.d.Version, Now: p.d.Now().UnixMilli(), Demo: p.d.Demo})
 }
 
@@ -194,4 +196,11 @@ func (p *public) timelines(w http.ResponseWriter, r *http.Request) {
 		out[strconv.FormatInt(l.ID, 10)] = segs
 	}
 	writeJSON(w, 200, map[string]any{"from": store.Ms(q.From), "to": store.Ms(q.To), "locations": out})
+}
+
+func cmpOr(v, def string) string {
+	if v == "" {
+		return def
+	}
+	return v
 }

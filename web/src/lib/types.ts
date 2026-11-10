@@ -52,6 +52,8 @@ export interface Snapshot {
   health: Health;
 }
 
+export type DispatchTheme = 'dark' | 'light' | 'system';
+
 export interface Identity {
   name: string;
   subtitle: string;
@@ -62,6 +64,8 @@ export interface Identity {
 export interface StateResponse extends Snapshot {
   identity: Identity;
   interval_s: number;
+  dispatch_rotation_s?: number;
+  dispatch_theme?: DispatchTheme;
   version: string;
   now: number;
   demo: boolean;
@@ -172,6 +176,8 @@ export interface Settings {
   prefer_ipv4: boolean;
   backup_hour: number;
   backup_secondary_dir: string;
+  dispatch_rotation_s: number;
+  dispatch_theme: DispatchTheme;
 }
 
 export interface Overrides {

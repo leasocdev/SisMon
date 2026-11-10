@@ -16,6 +16,7 @@
     { key: 'failures', label: 'Eșecuri pentru confirmarea căderii', min: 1, max: 20 },
     { key: 'recoveries', label: 'Reușite pentru confirmarea revenirii', min: 1, max: 20 },
     { key: 'stale_s', label: 'Expirarea datelor (s)', min: 30, max: 86400, hint: 'Fără verificări mai mult de atât, starea devine „Fără date”.' },
+    { key: 'dispatch_rotation_s', label: 'Rotația din Dispecerat (s)', min: 0, max: 3600, hint: 'Alternează grila cu harta la acest interval; 0 = oprită, minimum 10 s.' },
     { key: 'backup_hour', label: 'Ora backup-ului (0–23)', min: 0, max: 23 },
   ];
 
@@ -72,6 +73,15 @@
           <option value="primary">doar primare</option>
         </select>
         {#if errors.incidents_for}<p class="error-text">{errors.incidents_for}</p>{/if}
+      </div>
+      <div class="field">
+        <label for="set-dtheme">Schema de culori a Dispeceratului</label>
+        <select id="set-dtheme" bind:value={s.dispatch_theme} aria-invalid={!!errors.dispatch_theme}>
+          <option value="dark">întunecată</option>
+          <option value="light">luminoasă</option>
+          <option value="system">ca sistemul de operare</option>
+        </select>
+        {#if errors.dispatch_theme}<p class="error-text">{errors.dispatch_theme}</p>{/if}
       </div>
       <div class="field">
         <label for="set-dir">Al doilea director de backup (opțional)</label>
