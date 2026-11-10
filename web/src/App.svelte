@@ -6,6 +6,7 @@
   import Monitor from './pages/Monitor.svelte';
   import Dispatch from './pages/Dispatch.svelte';
   import Report24 from './pages/Report24.svelte';
+  import AdminShell from './pages/admin/AdminShell.svelte';
   import LocationPanel from './pages/LocationPanel.svelte';
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
@@ -84,6 +85,8 @@
     {#await import('./pages/Stats.svelte') then m}<m.default />{/await}
   {:else if router.route.name === 'report'}
     <Report24 />
+  {:else if router.route.name === 'admin' || router.route.name === 'adminLocation' || router.route.name === 'adminPage'}
+    <AdminShell />
   {:else if router.route.name === 'dispatch'}
     <Dispatch />
   {:else}

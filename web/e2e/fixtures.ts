@@ -111,3 +111,11 @@ export { expect };
 export async function waitState(page: Page, name: string, text: string): Promise<void> {
   await expect(page.locator('.loc-card', { hasText: name }).first()).toContainText(text, { timeout: 20_000 });
 }
+
+/** Logs in through the UI. */
+export async function login(page: Page, password = PASSWORD, base = ''): Promise<void> {
+  await page.goto(base + '/administrare');
+  await page.getByLabel('Parola', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Autentificare' }).click();
+  await expect(page.getByRole('navigation', { name: 'Administrare' })).toBeVisible();
+}
