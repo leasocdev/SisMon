@@ -30,7 +30,25 @@ Deschideți `http://SERVER:8501/` în browser. Pagini:
 | `/harta` | hartă OpenStreetMap (prin proxy-ul serverului, cu cache); contururi locale când OSM nu răspunde |
 | `/statistici` | disponibilitate, acoperire, incidente, MTTR, pe orice perioadă de până la 400 de zile |
 | `/raport-24h` | situația curentă și întreruperile ultimelor 24 h, pregătit pentru tipărire A4 |
-| `/administrare` | locații și echipamente, setări, identitate, backup-uri, jurnal, diagnostic, parolă |
+| `/statistici` → CSV / Excel / PDF | exportul exact al datelor afișate |
+| `/administrare` | locații și echipamente, import/export CSV și Excel, setări, identitate și logo, backup-uri, jurnal, diagnostic, parolă |
+
+## Demonstrație
+
+```powershell
+netwatch.exe demo            # http://localhost:8502/, date simulate în .demo-data
+```
+
+12 locații din Moldova cu scenarii care evoluează (căderi, degradări, latență mare, erori de monitor). Parola de administrare este `netwatch-demo`. Directorul `demo-data` este separat de datele reale și poate fi șters oricând.
+
+## Versiuni (release)
+
+```bash
+go run ./tools/release --version 1.0.0     # dist/netwatch-windows-amd64.exe, netwatch-linux-amd64, netwatch-linux-arm64, SHA256SUMS
+go run ./tools/release --skip-web           # fără recompilarea interfeței
+```
+
+CI (`.github/workflows/ci.yml`) rulează testele cu `-race` pe Windows și Linux, ICMP real pe Linux (socket neprivilegiat și raw), verificarea tipurilor, testele unitare și end-to-end. La o etichetă `vX.Y.Z` construiește binarele și publică un GitHub Release.
 
 ## Dezvoltare
 

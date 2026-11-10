@@ -167,6 +167,8 @@ Toate datele au format JSON. Timpii sunt în milisecunde Unix, iar duratele în 
 | `GET /api/state`, `/api/events` (SSE), `/api/catalog`, `/api/stats`, `/api/report24`, `/api/timelines`, `/api/locations/{id}/timeline`, `/api/devices/{id}/timeline`, `/api/devices/{id}/latency`, `/tiles/{z}/{x}/{y}.png` | public (LAN) |
 | `/api/admin/session`, `setup`, `login`, `logout` | autentificare |
 | `/api/admin/locations/order` | sesiune + `X-CSRF-Token` |
+| `GET /api/export/csv`, `/api/export/xlsx`, `/api/export/pdf`, `GET /branding/logo` | public (LAN) |
+| `POST /api/admin/import/preview`, `/api/admin/import/apply` (multipart, câmpul `file`), `POST/DELETE /api/admin/identity/logo`, `GET /api/admin/export/locations.csv`, `locations.xlsx` | sesiune (+ `X-CSRF-Token` pentru modificări) |
 | `/api/admin/locations[/{id}]`, `devices/test`, `settings`, `identity`, `audit`, `diagnostic`, `backups[/{name}]`, `password` | sesiune de administrator + `X-CSRF-Token` pentru modificări |
 
 Parametri pentru statistici: `from`, `to` (ms; implicit ultimele 24 h; maximum 400 de zile), `location`, `device`, `kind`, `incidents=all|active|closed`.
@@ -196,3 +198,34 @@ chrome --kiosk --autoplay-policy=no-user-gesture-required "http://SERVER:8501/di
 ## 12. Alerte sonore
 
 Butonul „Sunet” apare pe Monitorizare, Dispecerat și Raport 24H; preferința se reține în browser. Se aude un semnal la apariția unei locații indisponibile (opțional și la degradare) și un semnal diferit la revenire. Locațiile deja căzute la deschiderea paginii nu declanșează semnal.
+
+## 13. Import și export
+
+**Import locații** (Administrare → Import / export): fișier CSV sau Excel (.xlsx), cel mult 5 MB, 1000 de rânduri și 200 de locații.
+
+- Coloane (antetul poate fi în română sau engleză, fără diacritice): `Locație`/`location`, `Adresă`, `Latitudine`, `Longitudine`, `Echipament`/`device`, `Host`/`IP`, `Tip`, `Primar`, `Observații`. Obligatorii: locație, echipament, host.
+- Un rând = un echipament. Rândurile cu aceeași locație formează o locație; adresa, coordonatele și observațiile se completează o singură dată (sau identic).
+- `Primar`: `da`/`nu`, `1`/`0`, `x`/gol. Fără coloana `Primar`, primul echipament al fiecărei locații este primar.
+- CSV: separatorul (`,`, `;`, tab), codificarea (UTF-8, Windows-1250, Windows-1252) și virgula zecimală la coordonate sunt detectate automat. Un fișier salvat din Excel cu setări românești („CSV (delimitat prin punct și virgulă)”) funcționează direct; literele ş/ţ cu sedilă devin ș/ț.
+- **Previzualizează** arată fiecare rând cu erorile pe celulă; **Importă** salvează totul într-o singură tranzacție (ori tot, ori nimic). Locațiile existente (după nume) nu sunt modificate.
+
+**Export locații**: CSV sau Excel în același format, reimportabil fără pierderi (pragurile proprii ale echipamentelor nu fac parte din format).
+
+**Export statistici** (pagina Statistici → CSV / Excel / PDF): aceleași date ca pe ecran, pentru perioada și filtrele alese.
+
+- CSV: UTF-8 cu BOM, separator `;`, zecimale cu virgulă — se deschide corect în Excel cu setări românești. Blocuri: perioadă și filtre, echipamente, locații, incidente.
+- Excel: foile Echipamente, Locații, Incidente, Perioadă și filtre (numerele ca numere).
+- PDF: A4 orientat peisaj, cu logo, rezumat, tabel echipamente, bare de stare pe locații și incidente; fontul DejaVu Sans este încorporat.
+- Valorile care încep cu `=`, `+`, `-`, `@` primesc prefixul `'` în exporturile statistice, ca Excel să nu le execute ca formule.
+
+## 14. Logo
+
+Administrare → Identitate → Logo: PNG de cel mult 1024 × 1024 pixeli și 500 KB. Serverul verifică și reencodează imaginea. Logo-ul apare în antet, pe ecranul de dispecerat, în Raportul 24H și în PDF. Se păstrează în `DIR/branding/logo.png` — nu face parte din backup-ul bazei; după mutarea pe alt server, încărcați-l din nou.
+
+## 15. Mod demonstrativ
+
+`netwatch demo [--data demo-data] [--listen :8502]` pornește o instanță separată cu 12 locații simulate și scenarii care se repetă (de exemplu Cahul cade 6 minute din 30, Orhei este degradat periodic, Soroca are latență mare). Verificările rulează de 6 ori mai des decât în mod normal, ca statisticile să se umple repede. Parola de administrare: `netwatch-demo`. Bannerul „MOD DEMONSTRATIV” apare pe toate paginile.
+
+## 16. Versiuni noi
+
+Binarele se produc cu `go run ./tools/release --version X.Y.Z` (sau automat de CI la eticheta `vX.Y.Z`), împreună cu `SHA256SUMS`. Verificați suma de control înainte de instalare (`sha256sum -c SHA256SUMS` pe Linux, `Get-FileHash` pe Windows), apoi urmați secțiunea 6.
