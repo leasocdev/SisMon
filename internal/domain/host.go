@@ -14,7 +14,13 @@ func ValidHost(h string) bool {
 	if _, err := netip.ParseAddr(h); err == nil {
 		return true
 	}
-	for _, label := range strings.Split(h, ".") {
+	labels := strings.Split(h, ".")
+	// An all-numeric last label is a mistyped IPv4 address, not a DNS name
+	// (RFC 3696 §2: top-level domains are never all-numeric).
+	if last := labels[len(labels)-1]; last != "" && strings.Trim(last, "0123456789") == "" {
+		return false
+	}
+	for _, label := range labels {
 		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
 			return false
 		}

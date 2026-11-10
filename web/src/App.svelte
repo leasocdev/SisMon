@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import Announcer from './components/Announcer.svelte';
+  import ConfirmHost from './components/ConfirmHost.svelte';
   import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
   import Monitor from './pages/Monitor.svelte';
@@ -63,6 +64,7 @@
   </Header>
 {/if}
 <Announcer />
+<ConfirmHost />
 <main id="continut">
   {#if router.route.name === 'notFound'}
     <div class="page">

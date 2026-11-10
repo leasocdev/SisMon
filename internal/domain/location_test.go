@@ -78,3 +78,16 @@ func TestNormalizeErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestValidHostRejectsMalformedIPv4(t *testing.T) {
+	for _, h := range []string{"999.1.1.1", "192.168.1.300", "10.0.0", "1.2.3.4.5"} {
+		if ValidHost(h) {
+			t.Errorf("%q must be rejected (numeric top-level label)", h)
+		}
+	}
+	for _, h := range []string{"10.0.0.1", "router1.local", "a1.example.com", "host-2", "::1"} {
+		if !ValidHost(h) {
+			t.Errorf("%q must be accepted", h)
+		}
+	}
+}

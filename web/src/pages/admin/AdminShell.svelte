@@ -83,7 +83,7 @@
       <button type="button" class="logout" onclick={logout}>Ieșire</button>
     </nav>
     <section class="content">
-      {#key key}
+      {#key router.route.path}
         {#await PAGES[key]()}
           <p class="muted">Se încarcă…</p>
         {:then m}
