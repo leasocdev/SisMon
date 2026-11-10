@@ -4,6 +4,7 @@
   import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
   import Monitor from './pages/Monitor.svelte';
+  import LocationPanel from './pages/LocationPanel.svelte';
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
   import { beeper, soundFor, soundPrefs } from './lib/sound.svelte';
@@ -66,7 +67,15 @@
       <p><a href="/">Înapoi la monitorizare</a></p>
     </div>
   {:else if router.route.name === 'monitor' || router.route.name === 'location'}
-    <Monitor />
+    <Monitor>
+      {#snippet panel()}
+        {#if router.route.name === 'location'}
+          {#key router.route.params.id}
+            <LocationPanel id={Number(router.route.params.id)} />
+          {/key}
+        {/if}
+      {/snippet}
+    </Monitor>
   {:else}
     <div class="page"><h1>{titles[router.route.name]}</h1></div>
   {/if}
