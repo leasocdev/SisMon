@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/go-pdf/fpdf v0.9.0
 	github.com/kardianos/service v1.3.0
 	github.com/xuri/excelize/v2 v2.11.1
 	golang.org/x/crypto v0.58.0
