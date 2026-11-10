@@ -27,6 +27,7 @@ import (
 	"netwatch/internal/store"
 	"netwatch/internal/tlsutil"
 	"netwatch/internal/version"
+	"netwatch/internal/webui"
 )
 
 // Options inject dependencies (tests, demo mode, embedded UI).
@@ -37,6 +38,8 @@ type Options struct {
 	Web           fs.FS
 	IntervalScale float64
 	FlushEvery    time.Duration
+	// Wrap, if set, wraps the final HTTP handler (end-to-end test harness).
+	Wrap func(http.Handler) http.Handler
 }
 
 func defaultLookup(ctx context.Context, host string) ([]netip.Addr, error) {
@@ -95,8 +98,14 @@ func Run(ctx context.Context, cfg config.Config, opt Options) error {
 	sessions := auth.NewSessions(st)
 	runner := jobs.NewRunner(st, set, backups, sessions, svc.SetBackupStatus)
 
+	if opt.Web == nil {
+		opt.Web = webui.FS()
+	}
 	handler := api.New(api.Deps{Store: st, Hub: hub, Settings: set, Monitor: svc, Backups: backups, Sessions: sessions,
 		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Version: version.Version, DataDir: cfg.DataDir})
+	if opt.Wrap != nil {
+		handler = opt.Wrap(handler)
+	}
 	srv := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second,
 		ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelWarn)}
 

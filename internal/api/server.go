@@ -101,7 +101,7 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 		writeError(w, apperr.NotFound("Ruta API nu există."))
 	})
 	if d.Web != nil {
-		mux.Handle("/", http.FileServerFS(d.Web))
+		mux.Handle("/", spaHandler(d.Web))
 	} else {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path != "/" {
