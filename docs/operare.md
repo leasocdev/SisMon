@@ -146,6 +146,7 @@ La prima pornire după actualizare, migrațiile bazei rulează automat, după un
 
 - Permiteți TCP 8501 (sau portul ales) către server din subrețelele operatorilor.
 - Echipamentele monitorizate trebuie să permită ICMP Echo de la IP-ul serverului.
+- Pentru hartă, serverul descarcă dale de la `https://tile.openstreetmap.org` (HTTPS ieșire). Dalele se păstrează 7 zile în `DIR/tiles/` (maximum 500 MB). Fără internet, harta afișează contururi locale; monitorizarea nu este afectată.
 
 ## 9. Retenția datelor
 
@@ -163,8 +164,35 @@ Toate datele au format JSON. Timpii sunt în milisecunde Unix, iar duratele în 
 
 | Rută | Acces |
 |---|---|
-| `GET /api/state`, `/api/events` (SSE), `/api/catalog`, `/api/stats`, `/api/report24`, `/api/devices/{id}/timeline`, `/api/devices/{id}/latency` | public (LAN) |
+| `GET /api/state`, `/api/events` (SSE), `/api/catalog`, `/api/stats`, `/api/report24`, `/api/timelines`, `/api/locations/{id}/timeline`, `/api/devices/{id}/timeline`, `/api/devices/{id}/latency`, `/tiles/{z}/{x}/{y}.png` | public (LAN) |
 | `/api/admin/session`, `setup`, `login`, `logout` | autentificare |
+| `/api/admin/locations/order` | sesiune + `X-CSRF-Token` |
 | `/api/admin/locations[/{id}]`, `devices/test`, `settings`, `identity`, `audit`, `diagnostic`, `backups[/{name}]`, `password` | sesiune de administrator + `X-CSRF-Token` pentru modificări |
 
 Parametri pentru statistici: `from`, `to` (ms; implicit ultimele 24 h; maximum 400 de zile), `location`, `device`, `kind`, `incidents=all|active|closed`.
+
+Fluxul SSE (`/api/events`) trimite `snapshot`, `state`, `removed`, `health` și `ping` (la 15 s). Identificatorii au forma `epocă-număr`; după o repornire a serverului, clientul primește automat un `snapshot` nou. Reluarea se face cu antetul `Last-Event-ID` sau cu `?last=`.
+
+## 11. Ecranul de dispecerat
+
+Adresa: `http://SERVER:8501/dispecerat`. Opțiuni în URL, combinabile:
+
+| Opțiune | Efect |
+|---|---|
+| `?rotatie=60` | alternează grila cu harta la fiecare 60 s (minimum 10) |
+| `?sunet=1` | pornește alertele sonore pe acest ecran |
+| `?tema=luminoasa` | tema luminoasă (implicit: întunecată) |
+
+Exemplu de mod kiosk (Chrome/Edge):
+
+```
+chrome --kiosk --autoplay-policy=no-user-gesture-required "http://SERVER:8501/dispecerat?rotatie=60&sunet=1"
+```
+
+- Fără `--autoplay-policy`, browserul poate bloca sunetul până la primul click; butonul afișează atunci „Click pentru a activa sunetul”.
+- Dacă legătura cu serverul se pierde peste 30 de secunde, ecranul se încadrează în gri și afișează „DATE NEACTUALIZATE”. Revenirea este automată.
+- Grila se dimensionează singură pentru a încăpea fără derulare (testat cu 60 de locații la 1920×1080).
+
+## 12. Alerte sonore
+
+Butonul „Sunet” apare pe Monitorizare, Dispecerat și Raport 24H; preferința se reține în browser. Se aude un semnal la apariția unei locații indisponibile (opțional și la degradare) și un semnal diferit la revenire. Locațiile deja căzute la deschiderea paginii nu declanșează semnal.

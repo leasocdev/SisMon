@@ -54,7 +54,7 @@
         height: 220,
         scales: { x: { time: true, min: from / 1000, max: to / 1000 }, loss: { range: [0, 100] } },
         series: [
-          { value: (_u, v) => (v == null ? '—' : fmtShort(v * 1000)) },
+          { label: 'Ora', value: (_u, v) => (v == null ? '—' : fmtShort(v * 1000)) },
           { label: 'Medie (ms)', stroke: line, width: 2, spanGaps: false, value: (_u, v) => (v == null ? '—' : v.toFixed(1)) },
           { label: 'Min (ms)', stroke: line, width: 0, value: (_u, v) => (v == null ? '—' : v.toFixed(1)) },
           { label: 'Max (ms)', stroke: line, width: 0, value: (_u, v) => (v == null ? '—' : v.toFixed(1)) },
