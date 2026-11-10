@@ -1,4 +1,4 @@
-import { adminApi, createLocation, expect, locationId, login, setHost, test } from './fixtures';
+import { adminApi, createLocation, expect, locationId, login, PASSWORD, setHost, test } from './fixtures';
 
 test.describe('Administrare — locații', () => {
   test('creare cu „Testează acum”', async ({ page }) => {
@@ -122,4 +122,23 @@ test.describe('Administrare — locații', () => {
     await page.locator('.loc-list li').nth(1).getByRole('button', { name: 'Mută în sus' }).click();
     await expect(page.locator('.loc-list li').nth(0).locator('a')).toHaveText(first);
   });
+});
+
+test('sesiune expirată în editor păstrează modificările', async ({ page, context }) => {
+  await login(page);
+  const id = await locationId('Cahul');
+  await page.goto(`/administrare/locatie/${id}`);
+  await expect(page.locator('.device-row').first()).toBeVisible();
+  await page.getByLabel('Denumire', { exact: true }).fill('Cahul expirat');
+  await context.clearCookies();
+  await page.getByRole('button', { name: 'Salvează' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Autentificare administrator' });
+  await expect(dlg).toContainText('Sesiunea a expirat');
+  await dlg.getByLabel('Parola', { exact: true }).fill(PASSWORD);
+  await dlg.getByRole('button', { name: 'Autentificare' }).click();
+  await expect(dlg).toHaveCount(0);
+  await expect(page.getByLabel('Denumire', { exact: true })).toHaveValue('Cahul expirat');
+  await page.getByLabel('Denumire', { exact: true }).fill('Cahul');
+  await page.getByRole('button', { name: 'Salvează' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Locația a fost salvată.' })).toBeVisible();
 });

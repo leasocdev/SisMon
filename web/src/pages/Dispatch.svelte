@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import ConnectionBadge from '../components/ConnectionBadge.svelte';
   import SoundToggle from '../components/SoundToggle.svelte';
   import LoadFailed from '../components/LoadFailed.svelte';
@@ -25,6 +25,39 @@
   const locs = $derived(sortLocations(live.locations, 'severity'));
   const problems = $derived(locs.filter((l) => severity(l.state) < 2));
   const grid = $derived(computeGrid(locs.length, size.w, size.h));
+
+  // Problem band: show what fits on one line and a "+N" counter for the rest.
+  let itemsEl = $state<HTMLDivElement>();
+  let visible = $state(Infinity);
+  let moreEl = $state<HTMLSpanElement>();
+  function measure() {
+    if (!itemsEl) {
+      visible = Infinity;
+      return;
+    }
+    const kids = [...itemsEl.children] as HTMLElement[];
+    const fits = (limit: number) => {
+      let n = 0;
+      for (const k of kids) {
+        if (k.offsetLeft + k.offsetWidth > limit) break;
+        n++;
+      }
+      return n;
+    };
+    // width available if the "+N" badge were not shown, and the badge width
+    const badge = moreEl ? moreEl.offsetWidth + 6 : 0;
+    const full = itemsEl.clientWidth + badge;
+    if (fits(full) >= kids.length) {
+      visible = Infinity;
+      return;
+    }
+    visible = fits(full - Math.max(badge, 64));
+  }
+  $effect(() => {
+    void problems.length;
+    void size.w;
+    tick().then(measure);
+  });
 
   /** The device explaining a location's problem, for the band. */
   function culprit(l: LocationView) {
@@ -70,11 +103,16 @@
       {#if problems.length === 0}
         <span class="ok">✓ Toate locațiile funcționează</span>
       {:else}
-        {#each problems as l (l.id)}
-          <span class="prob f-{l.state}">
-            {l.name} · {culprit(l)?.name ?? STATE_LABEL[l.state]} · {fmtSince(problemSince(l), now)}
-          </span>
-        {/each}
+        <div class="items" bind:this={itemsEl}>
+          {#each problems as l, i (l.id)}
+            <span class="prob f-{l.state}" class:cut={i >= visible}>
+              {l.name} · {culprit(l)?.name ?? STATE_LABEL[l.state]} · {fmtSince(problemSince(l), now)}
+            </span>
+          {/each}
+        </div>
+        {#if visible < problems.length}
+          <span class="more" bind:this={moreEl} title="Încă {problems.length - visible} locații cu probleme">+{problems.length - visible}</span>
+        {/if}
       {/if}
     </div>
     <div class="right">
@@ -97,7 +135,7 @@
       {@const c = culprit(l)}
       <a class="tile f-{live.stale ? 'unknown' : l.state}" href="/locatie/{l.id}">
         <span class="tname">{l.name}</span>
-        <span class="tstate"><span aria-hidden="true">{STATE_SYMBOL[l.state]}</span> {STATE_LABEL[l.state]}</span>
+        <span class="tstate"><span aria-hidden="true">{STATE_SYMBOL[l.state]}</span> {STATE_LABEL[l.state]}{#if live.stale} · neactualizat{/if}</span>
         {#if l.state !== 'up' && c}
           <span class="tdet">{c.name}{c.error_code ? ' · ' + errorText(c.error_code) : ''}</span>
         {/if}
@@ -146,12 +184,31 @@
   }
   .band {
     flex: 1;
+    min-width: 0;
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 1.1em;
+  }
+  .items {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
     gap: 6px;
     overflow: hidden;
-    max-height: 70px;
-    font-size: 1.1em;
+    white-space: nowrap;
+  }
+  .cut {
+    visibility: hidden;
+  }
+  .more {
+    flex-shrink: 0;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 4px;
+    background: var(--c-down);
+    color: var(--on-down);
   }
   .prob {
     padding: 3px 10px;

@@ -14,21 +14,27 @@
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
   import { beeper, soundAllowed, soundFor, soundPrefs } from './lib/sound.svelte';
-  import { applyTheme, initialTheme, saveTheme, storedTheme, type Theme } from './lib/theme';
+  import { applyTheme, effectiveTheme, saveTheme, storedTheme, validTheme, type Theme } from './lib/theme';
 
-  const prefersDark = typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
-  const queryTheme = router.route.query.tema === 'luminoasa' ? 'light' : router.route.query.tema === 'intunecata' ? 'dark' : null;
-  let theme = $state<Theme>(queryTheme ?? initialTheme(storedTheme(), prefersDark, router.route.name));
+  const media = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: dark)') : null;
+  const queryTheme: Theme | null = router.route.query.tema === 'luminoasa' ? 'light' : router.route.query.tema === 'intunecata' ? 'dark' : null;
+  // An explicit choice (URL or saved) wins; otherwise the theme follows the
+  // system live, and the dispatch screen is dark.
+  let chosen = $state<Theme | null>(queryTheme ?? validTheme(storedTheme()));
+  let systemDark = $state(media?.matches ?? false);
+  const theme = $derived(chosen ?? effectiveTheme(null, systemDark, router.route.name));
 
   $effect(() => applyTheme(theme));
 
   function setTheme(t: Theme) {
-    theme = t;
+    chosen = t;
     saveTheme(t);
   }
 
   onMount(() => {
     live.start();
+    const onScheme = (e: MediaQueryListEvent) => (systemDark = e.matches);
+    media?.addEventListener('change', onScheme);
     const off = live.onChange((prev, next) => {
       if (!soundAllowed(router.route.name)) return;
       const kind = soundFor(prev?.state, next?.state, soundPrefs);
@@ -37,6 +43,7 @@
     return () => {
       off();
       live.stop();
+      media?.removeEventListener('change', onScheme);
     };
   });
 

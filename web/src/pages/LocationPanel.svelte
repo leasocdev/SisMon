@@ -34,7 +34,9 @@
   const now = $derived((live.tick, live.serverNow()));
   const notFound = $derived(live.loaded && !loc);
 
+  let loadSeq = 0;
   async function load() {
+    const my = ++loadSeq;
     const days = PERIODS.find((p) => p[0] === period)![2];
     const to = Math.round(live.serverNow());
     const from = to - days * 86_400_000;
@@ -46,6 +48,7 @@
         get<Report>('/api/stats', { ...q, location: id }),
         ...(l?.devices ?? []).map((d) => get<{ segments: Segment[] }>(`/api/devices/${d.id}/timeline`, q)),
       ]);
+      if (my !== loadSeq) return; // a newer period was chosen meanwhile
       range = q;
       locTimeline = lt.segments;
       incidents = rep.incidents;
@@ -101,6 +104,27 @@
     load();
   });
 
+  // Keeps keyboard focus inside the modal panel.
+  function trapFocus(e: KeyboardEvent) {
+    const items = [...panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter(
+      (el) => el.offsetParent !== null,
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (!panel.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    } else if (e.shiftKey && (active === first || active === panel)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
   onMount(() => {
     panel.focus();
     let t: ReturnType<typeof setTimeout> | null = null;
@@ -113,6 +137,8 @@
       if (e.key === 'Escape') {
         e.preventDefault();
         close();
+      } else if (e.key === 'Tab') {
+        trapFocus(e);
       }
     };
     document.addEventListener('keydown', onKey);

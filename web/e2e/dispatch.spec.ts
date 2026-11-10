@@ -82,3 +82,31 @@ test.describe('Dispecerat', () => {
     await expect(page.locator('.clock')).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
   });
 });
+
+test('banda de probleme arată +N pentru ce nu încape', async ({ page }) => {
+  const api = await adminApi();
+  const ids: number[] = [];
+  try {
+    for (let i = 0; i < 12; i++) {
+      const host = `10.3.${i}.1`;
+      await setHost(host, 'timeout');
+      ids.push(await createLocation(api, { name: `Căzută cu nume lung ${String(i + 1).padStart(2, '0')}`, devices: [{ name: 'Router', host }] }));
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/dispecerat');
+    await expect(page.locator('.band .more')).toHaveText(/^\+\d+$/, { timeout: 25_000 });
+  } finally {
+    for (const id of ids) await api.send('DELETE', `/api/admin/locations/${id}`);
+    await api.dispose();
+  }
+});
+
+test.describe('temă', () => {
+  test.use({ colorScheme: 'light' });
+  test('dispeceratul este întunecat și la navigarea internă', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await page.getByRole('navigation', { name: 'Navigare principală' }).getByRole('link', { name: 'Dispecerat' }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  });
+});

@@ -27,9 +27,9 @@ class Session {
 
   private async started(r: { csrf: string }): Promise<void> {
     setCsrf(r.csrf);
+    await this.refresh(); // before clearing "expired", so the admin page is never unmounted
     this.expired = false;
     this.notice = '';
-    await this.refresh();
   }
 
   async login(password: string): Promise<void> {

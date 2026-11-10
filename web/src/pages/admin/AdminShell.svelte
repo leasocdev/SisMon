@@ -73,7 +73,7 @@
       <p class="notice warn">Parola nu este configurată. Rulați pe server: <code>netwatch set-password</code></p>
     </div>
   {/if}
-{:else if !session.info.authenticated}
+{:else if !session.info.authenticated && !session.expired}
   <Login />
 {:else}
   <div class="admin">
@@ -97,6 +97,14 @@
       {/key}
     </section>
   </div>
+  {#if !session.info.authenticated}
+    <!-- expired session: log in over the page so unsaved work stays -->
+    <div class="login-overlay">
+      <div role="dialog" aria-modal="true" aria-label="Autentificare administrator">
+        <Login />
+      </div>
+    </div>
+  {/if}
 {/if}
 
 <style>
@@ -138,5 +146,12 @@
   }
   .content {
     min-width: 0;
+  }
+  .login-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2500;
+    background: rgb(0 0 0 / 0.45);
+    overflow-y: auto;
   }
 </style>

@@ -27,3 +27,12 @@ export function saveTheme(t: Theme): void {
 export function applyTheme(t: Theme): void {
   document.documentElement.dataset.theme = t;
 }
+
+/** Theme when the user has not chosen one explicitly (stored wins if valid). */
+export function effectiveTheme(stored: string | null, prefersDark: boolean, routeName: string): Theme {
+  return initialTheme(stored, prefersDark, routeName);
+}
+
+export function validTheme(v: string | null): Theme | null {
+  return v === 'light' || v === 'dark' ? v : null;
+}

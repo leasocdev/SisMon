@@ -34,19 +34,22 @@
     }
   }
 
+  let busy = $state(false);
   async function move(from: number, to: number) {
-    if (filtering) return; // reorder only the full list
+    if (filtering || busy) return; // reorder only the full list, one request at a time
     const next = moveDevice(locations, from, to);
     if (next === locations) return;
-    const prev = locations;
     locations = next;
+    busy = true;
     try {
       await send('PUT', '/api/admin/locations/order', { ids: next.map((l) => l.id) });
       saved = 'Ordinea a fost salvată.';
       error = '';
     } catch (e) {
-      locations = prev;
       error = (e as Error).message;
+      await load(); // the server's order is the truth
+    } finally {
+      busy = false;
     }
   }
 
@@ -77,8 +80,8 @@
       <span class="muted">{l.devices.length} {l.devices.length === 1 ? 'echipament' : 'echipamente'}</span>
       {#if lv}<StatusBadge state={lv.state} size="small" />{/if}
       <span class="spacer"></span>
-      <button type="button" onclick={() => move(i, i - 1)} disabled={i === 0 || filtering} aria-label="Mută în sus">↑</button>
-      <button type="button" onclick={() => move(i, i + 1)} disabled={i === shown.length - 1 || filtering} aria-label="Mută în jos">↓</button>
+      <button type="button" onclick={() => move(i, i - 1)} disabled={i === 0 || filtering || busy} aria-label="Mută în sus">↑</button>
+      <button type="button" onclick={() => move(i, i + 1)} disabled={i === shown.length - 1 || filtering || busy} aria-label="Mută în jos">↓</button>
     </li>
   {/each}
 </ul>
