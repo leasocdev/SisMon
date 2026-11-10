@@ -71,7 +71,14 @@ func New(dir, version string) (*Proxy, error) {
 		sem: make(chan struct{}, concurrency), index: map[string]*entry{}, inflight: map[string]*call{},
 	}
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".png") {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".tile-") {
+			os.Remove(path) // left by a crash during a download
+			return nil
+		}
+		if !strings.HasSuffix(path, ".png") {
 			return nil
 		}
 		rel, err := filepath.Rel(dir, path)

@@ -45,3 +45,12 @@ test('bannerul modului demonstrativ', async ({ page }) => {
   await expect(page.locator('.loc-card').first()).toBeVisible();
   await expect(page.getByText('MOD DEMONSTRATIV')).toHaveCount(0);
 });
+
+test.describe('fixture — resurse', () => {
+  test.fail();
+  test('detectează un fișier lipsă al interfeței', async ({ page }) => {
+    await page.route('**/assets/*.css', (r) => r.fulfill({ status: 404, body: 'lipsă' }));
+    await page.goto('/');
+    await page.waitForTimeout(300);
+  });
+});

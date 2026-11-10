@@ -26,6 +26,7 @@ test.describe('Administrare — autentificare', () => {
 
   test('sesiune expirată', async ({ page, context }) => {
     await login(page);
+    await expect(page.locator('.loc-list li').first()).toBeVisible(); // no admin request in flight
     await context.clearCookies();
     await page.getByRole('navigation', { name: 'Administrare' }).getByRole('link', { name: 'Setări monitorizare' }).click();
     await expect(page.getByText('Sesiunea a expirat.')).toBeVisible();

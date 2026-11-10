@@ -257,3 +257,16 @@ func TestTileRejectsNonPNG(t *testing.T) {
 		t.Fatal("non-PNG saved")
 	}
 }
+
+func TestTileCleansTemps(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "2", "1"), 0o750)
+	tmp := filepath.Join(dir, "2", "1", ".tile-123")
+	os.WriteFile(tmp, []byte("partial"), 0o644)
+	if _, err := New(dir, "1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
+		t.Fatal("leftover temp file kept", err)
+	}
+}

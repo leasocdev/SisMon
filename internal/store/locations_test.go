@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -222,5 +223,16 @@ func TestSaveLocationsAtomic(t *testing.T) {
 	s.DB.QueryRow(`SELECT COUNT(*) FROM audit WHERE action='import'`).Scan(&n)
 	if n != 1 {
 		t.Fatal("audit import", n)
+	}
+}
+
+func TestSetLocationOrderRequiresFullSet(t *testing.T) {
+	s := openTemp(t)
+	a := save(t, s, nil, input(t, "A", "10.0.0.1"), now).LocationID
+	save(t, s, nil, input(t, "B", "10.0.0.2"), now)
+	err := s.SetLocationOrder(context.Background(), []int64{a}, now)
+	var e *apperr.Error
+	if !errors.As(err, &e) || e.Field != "ids" || !strings.Contains(e.Message, "reîncărcați") {
+		t.Fatalf("partial list must be rejected: %v", err)
 	}
 }

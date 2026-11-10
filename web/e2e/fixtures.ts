@@ -92,6 +92,13 @@ export const test = base.extend<Fixtures>({
       });
     });
     page.on('pageerror', (err) => problems.push('pageerror: ' + err.message));
+    // Every file of the interface must exist; API, tile and logo errors are part of the tests.
+    page.on('response', (res) => {
+      const u = new URL(res.url());
+      if (res.status() >= 400 && u.hostname === '127.0.0.1' && !/^\/(api|tiles|branding)\//.test(u.pathname)) {
+        problems.push(`HTTP ${res.status()}: ${u.pathname}`);
+      }
+    });
     page.on('console', (msg) => {
       if (msg.type() !== 'error') return;
       const text = msg.text();

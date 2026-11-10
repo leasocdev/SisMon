@@ -404,8 +404,15 @@ func (s *Store) SetLocationOrder(ctx context.Context, ids []int64, now time.Time
 			return err
 		}
 		if n, _ := r.RowsAffected(); n == 0 {
-			return apperr.Invalid("ids", "Locație inexistentă sau arhivată în listă.")
+			return apperr.Invalid("ids", "Lista nu corespunde locațiilor active; reîncărcați pagina.")
 		}
+	}
+	var active int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM locations WHERE archived_at IS NULL`).Scan(&active); err != nil {
+		return err
+	}
+	if active != len(ids) {
+		return apperr.Invalid("ids", "Lista nu corespunde locațiilor active; reîncărcați pagina.")
 	}
 	if err := s.Audit(ctx, tx, "locations_order", "location", 0, map[string]any{"ids": ids}, now); err != nil {
 		return err
