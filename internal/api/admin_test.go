@@ -350,3 +350,37 @@ func TestSetupRejectsForeignHost(t *testing.T) {
 		t.Fatal(w.Body.String())
 	}
 }
+
+func TestAdminLocationsOrder(t *testing.T) {
+	s := newServer(t)
+	s.setPassword(t)
+	a := login(t, s)
+	c, b := a.do("POST", "/api/admin/locations", newLoc, true)
+	if c != 200 {
+		t.Fatal(c, b)
+	}
+	var created struct{ ID int64 }
+	decodeString(t, b, &created)
+	body := map[string]any{"ids": []int64{created.ID, s.loc}}
+	if c, _ := a.do("PUT", "/api/admin/locations/order", body, false); c != 403 {
+		t.Fatal("without csrf", c)
+	}
+	if c, b := a.do("PUT", "/api/admin/locations/order", body, true); c != 200 {
+		t.Fatal(c, b)
+	}
+	s.d.Hub.Load(context.Background(), s.d.Store)
+	var st struct {
+		Locations []struct {
+			ID        int64 `json:"id"`
+			SortOrder int   `json:"sort_order"`
+		}
+	}
+	decode(t, s.do("GET", "/api/state", nil, nil), &st)
+	got := map[int64]int{}
+	for _, l := range st.Locations {
+		got[l.ID] = l.SortOrder
+	}
+	if got[created.ID] != 0 || got[s.loc] != 1 {
+		t.Fatalf("%+v", got)
+	}
+}

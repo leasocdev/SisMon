@@ -275,3 +275,26 @@ func TestReport24Current(t *testing.T) {
 		t.Fatalf("%+v", r)
 	}
 }
+
+func TestTimelineForLocation(t *testing.T) {
+	e := newEnv(t)
+	e.device(1, 1, true, 0)
+	e.ivl("location", 1, state.Up, 100, 200)
+	e.ivl("location", 1, state.Degraded, 200, 300)
+	segs, err := TimelineFor(context.Background(), e.st, store.EntityLocation, 1, T(100), T(400), T(1000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Segment{{100000, 200000, state.Up}, {200000, 300000, state.Degraded}, {300000, 400000, state.Unknown}}
+	if len(segs) != len(want) {
+		t.Fatalf("%+v", segs)
+	}
+	for i := range want {
+		if segs[i] != want[i] {
+			t.Fatalf("%d: %+v", i, segs[i])
+		}
+	}
+	if _, err := TimelineFor(context.Background(), e.st, store.EntityLocation, 99, T(100), T(400), T(1000)); err == nil {
+		t.Fatal("unknown location must fail")
+	}
+}

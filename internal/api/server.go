@@ -90,6 +90,8 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	mux.HandleFunc("GET /api/devices/{id}/timeline", p.timeline)
 	mux.HandleFunc("GET /api/devices/{id}/latency", p.latency)
 	mux.HandleFunc("GET /api/report24", p.report24)
+	mux.HandleFunc("GET /api/timelines", p.timelines)
+	mux.HandleFunc("GET /api/locations/{id}/timeline", p.locationTimeline)
 	mux.HandleFunc("GET /api/events", p.events)
 	registerAdmin(mux, d)
 	if extra != nil {

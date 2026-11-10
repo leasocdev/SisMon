@@ -104,3 +104,24 @@ func itoa(v int64) string {
 		return string(b)
 	}()
 }
+
+func TestLatencyPointBudget(t *testing.T) {
+	e := newEnv(t)
+	e.device(1, 1, true, 0)
+	start := int64(1_000_000)
+	tx, _ := e.st.DB.Begin()
+	for i := int64(0); i < 7*1440; i++ {
+		tx.Exec(`INSERT INTO samples(device_id,ts,ok,latency_us,loss_pct) VALUES(1,?,1,1000,0)`, (start+i*60)*1000)
+	}
+	tx.Commit()
+	for _, span := range []int64{7 * 86400, 72 * 3600} {
+		pts, err := Latency(context.Background(), e.st, 1, T(start), T(start+span))
+		if err != nil || len(pts) == 0 || len(pts) > 500 {
+			t.Fatalf("span %d: %d points %v", span, len(pts), err)
+		}
+	}
+	day, _ := Latency(context.Background(), e.st, 1, T(start), T(start+86400))
+	if gap := day[1].T - day[0].T; gap >= int64(15*time.Minute/time.Millisecond) {
+		t.Fatalf("24h should stay raw, bucket %d ms", gap)
+	}
+}

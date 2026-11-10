@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"netwatch/internal/apperr"
 	"netwatch/internal/live"
@@ -140,4 +141,56 @@ func (p *public) report24(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, rep)
+}
+
+// MaxTimelinesPeriod bounds /api/timelines (all locations at once).
+const MaxTimelinesPeriod = 30 * 24 * time.Hour
+
+func (p *public) locationTimeline(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, apperr.Invalid("id", "Identificator de locație invalid."))
+		return
+	}
+	now := p.d.Now()
+	q, err := stats.ParseQuery(r.URL.Query(), now)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	segs, err := stats.TimelineFor(r.Context(), p.d.Store, store.EntityLocation, id, q.From, q.To, now)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"from": store.Ms(q.From), "to": store.Ms(q.To), "segments": segs})
+}
+
+// timelines returns the timelines of all active locations.
+func (p *public) timelines(w http.ResponseWriter, r *http.Request) {
+	now := p.d.Now()
+	q, err := stats.ParseQuery(r.URL.Query(), now)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	if q.To.Sub(q.From) > MaxTimelinesPeriod {
+		writeError(w, apperr.Invalid("from", "Perioada poate avea cel mult 30 de zile."))
+		return
+	}
+	locs, err := p.d.Store.ListLocations(r.Context(), false)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	out := make(map[string][]stats.Segment, len(locs))
+	for _, l := range locs {
+		segs, err := stats.TimelineFor(r.Context(), p.d.Store, store.EntityLocation, l.ID, q.From, q.To, now)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		out[strconv.FormatInt(l.ID, 10)] = segs
+	}
+	writeJSON(w, 200, map[string]any{"from": store.Ms(q.From), "to": store.Ms(q.To), "locations": out})
 }

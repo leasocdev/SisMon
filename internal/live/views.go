@@ -29,6 +29,7 @@ type LocationView struct {
 	Notes      string       `json:"notes"`
 	Lat        *float64     `json:"lat"`
 	Lon        *float64     `json:"lon"`
+	SortOrder  int          `json:"sort_order"`
 	State      state.State  `json:"state"`
 	Incomplete bool         `json:"incomplete"`
 	Since      int64        `json:"since"`

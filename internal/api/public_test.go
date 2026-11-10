@@ -273,3 +273,41 @@ func TestUnknownAPIRoute(t *testing.T) {
 }
 
 func itoa(v int64) string { return strconv.FormatInt(v, 10) }
+
+func TestTimelinesEndpoint(t *testing.T) {
+	s := newServer(t)
+	in := domain.LocationInput{Name: "Sud", Devices: []domain.DeviceInput{{Name: "R", Host: "10.0.9.1", Primary: true}}}
+	in.Normalize(settings.Defaults())
+	r2, err := s.d.Store.SaveLocation(context.Background(), nil, in, time.Now().Add(-time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := s.do("GET", "/api/timelines", nil, nil)
+	if w.Code != 200 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	var body struct {
+		From, To  int64
+		Locations map[string][]map[string]any
+	}
+	decode(t, w, &body)
+	if body.To-body.From != 86400000 || body.Locations[itoa(s.loc)] == nil || body.Locations[itoa(r2.LocationID)] == nil {
+		t.Fatalf("%s", w.Body.String())
+	}
+	now := time.Now().UnixMilli()
+	w = s.do("GET", "/api/timelines?from="+itoa(now-31*86400000)+"&to="+itoa(now), nil, nil)
+	if w.Code != 400 || !strings.Contains(w.Body.String(), `"field":"from"`) {
+		t.Fatal(w.Code, w.Body.String())
+	}
+}
+
+func TestLocationTimelineNotFound(t *testing.T) {
+	s := newServer(t)
+	w := s.do("GET", "/api/locations/999999/timeline", nil, nil)
+	if w.Code != 404 || !strings.Contains(w.Body.String(), "Locația") {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	if w := s.do("GET", "/api/locations/"+itoa(s.loc)+"/timeline", nil, nil); w.Code != 200 || !strings.Contains(w.Body.String(), `"segments"`) {
+		t.Fatal(w.Code, w.Body.String())
+	}
+}

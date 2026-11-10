@@ -184,3 +184,21 @@ func TestRecomputeLocation(t *testing.T) {
 		t.Fatal(st)
 	}
 }
+
+func TestSetLocationOrder(t *testing.T) {
+	s := openTemp(t)
+	a := save(t, s, nil, input(t, "A", "10.0.0.1"), now).LocationID
+	b := save(t, s, nil, input(t, "B", "10.0.0.2"), now).LocationID
+	if err := s.SetLocationOrder(context.Background(), []int64{b, a}, now); err != nil {
+		t.Fatal(err)
+	}
+	locs, _ := s.ListLocations(context.Background(), false)
+	if len(locs) != 2 || locs[0].ID != b || locs[1].ID != a {
+		t.Fatalf("%+v", locs)
+	}
+	err := s.SetLocationOrder(context.Background(), []int64{a, 999}, now)
+	var e *apperr.Error
+	if !errors.As(err, &e) || e.Field != "ids" {
+		t.Fatalf("%v", err)
+	}
+}

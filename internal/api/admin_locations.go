@@ -105,3 +105,24 @@ func (a *admin) testDevice(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"ok": res.OK(), "sent": res.Sent, "received": res.Received, "latency_ms": res.LatencyMs,
 		"code": code, "message": codeMessages[code]})
 }
+
+type orderBody struct {
+	IDs []int64 `json:"ids"`
+}
+
+func (a *admin) orderLocations(w http.ResponseWriter, r *http.Request) {
+	var b orderBody
+	if err := decodeJSON(w, r, &b); err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := a.d.Store.SetLocationOrder(r.Context(), b.IDs, a.d.Now()); err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := a.d.Monitor.Reload(r.Context()); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]bool{"ok": true})
+}

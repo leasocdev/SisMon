@@ -28,7 +28,8 @@ func Latency(ctx context.Context, st *store.Store, deviceID int64, from, to time
 	var err error
 	switch {
 	case span <= 7*24*time.Hour:
-		w := 15 * time.Minute
+		q := 15 * time.Minute
+		w := max(q, (span/maxPoints+q-1)/q*q)
 		if span <= 48*time.Hour {
 			w = max(span/maxPoints, time.Second)
 		}

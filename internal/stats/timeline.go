@@ -20,19 +20,28 @@ type Segment struct {
 
 // Timeline returns a device's state segments in [from, to], gaps as unknown.
 func Timeline(ctx context.Context, st *store.Store, deviceID int64, from, to, now time.Time) ([]Segment, error) {
+	return TimelineFor(ctx, st, store.EntityDevice, deviceID, from, to, now)
+}
+
+// TimelineFor returns the state segments of a device or location.
+func TimelineFor(ctx context.Context, st *store.Store, e store.Entity, id int64, from, to, now time.Time) ([]Segment, error) {
+	table, missing := "devices", "Echipamentul nu există."
+	if e == store.EntityLocation {
+		table, missing = "locations", "Locația nu există."
+	}
 	var exists int
-	if err := st.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM devices WHERE id=?`, deviceID).Scan(&exists); err != nil {
+	if err := st.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+table+` WHERE id=?`, id).Scan(&exists); err != nil {
 		return nil, err
 	}
 	if exists == 0 {
-		return nil, apperr.NotFound("Echipamentul nu există.")
+		return nil, apperr.NotFound(missing)
 	}
 	a, b, n := store.Ms(from), store.Ms(to), store.Ms(now)
 	if b > n {
 		b = n
 	}
 	rows, err := st.DB.QueryContext(ctx, `SELECT state, MAX(start_at,?1), MIN(COALESCE(end_at,?3),?2) FROM state_intervals
-		WHERE entity='device' AND entity_id=?4 AND start_at < ?2 AND COALESCE(end_at,?3) > ?1 ORDER BY start_at, id`, a, b, n, deviceID)
+		WHERE entity=?5 AND entity_id=?4 AND start_at < ?2 AND COALESCE(end_at,?3) > ?1 ORDER BY start_at, id`, a, b, n, id, e)
 	if err != nil {
 		return nil, err
 	}

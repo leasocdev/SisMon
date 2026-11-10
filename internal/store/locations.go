@@ -201,7 +201,7 @@ func (s *Store) SaveLocation(ctx context.Context, id *int64, in domain.LocationI
 		return res, err
 	}
 	if id == nil {
-		r, err := tx.ExecContext(ctx, `INSERT INTO locations(name,address,notes,lat,lon,created_at) VALUES(?,?,?,?,?,?)`, in.Name, in.Address, in.Notes, in.Lat, in.Lon, Ms(now))
+		r, err := tx.ExecContext(ctx, `INSERT INTO locations(name,address,notes,lat,lon,created_at,sort_order) VALUES(?,?,?,?,?,?,(SELECT COALESCE(MAX(sort_order),-1)+1 FROM locations WHERE archived_at IS NULL))`, in.Name, in.Address, in.Notes, in.Lat, in.Lon, Ms(now))
 		if err != nil {
 			return res, wrap("insert location", err)
 		}
@@ -348,4 +348,35 @@ func (s *Store) ArchiveLocation(ctx context.Context, id int64, now time.Time) (S
 		return res, err
 	}
 	return res, tx.Commit()
+}
+
+// SetLocationOrder sets the manual order of active locations: sort_order is
+// the index in ids. Unknown or archived ids are rejected.
+func (s *Store) SetLocationOrder(ctx context.Context, ids []int64, now time.Time) error {
+	if len(ids) == 0 || len(ids) > 10000 {
+		return apperr.Invalid("ids", "Lista locațiilor este goală sau prea lungă.")
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	seen := map[int64]bool{}
+	for i, id := range ids {
+		if seen[id] {
+			return apperr.Invalid("ids", "Locație repetată în listă.")
+		}
+		seen[id] = true
+		r, err := tx.ExecContext(ctx, `UPDATE locations SET sort_order=? WHERE id=? AND archived_at IS NULL`, i, id)
+		if err != nil {
+			return err
+		}
+		if n, _ := r.RowsAffected(); n == 0 {
+			return apperr.Invalid("ids", "Locație inexistentă sau arhivată în listă.")
+		}
+	}
+	if err := s.Audit(ctx, tx, "locations_order", "location", 0, map[string]any{"ids": ids}, now); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
