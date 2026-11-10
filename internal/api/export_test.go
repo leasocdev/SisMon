@@ -52,3 +52,14 @@ func TestExportLocationsAdmin(t *testing.T) {
 		t.Fatal(code)
 	}
 }
+
+func TestExportConcurrencyLimit(t *testing.T) {
+	s := newServer(t)
+	s.d.exportSem = make(chan struct{}, 1)
+	s.d.exportSem <- struct{}{} // an export is already running
+	s.h = build(s.d, nil)
+	w := s.do("GET", "/api/export/pdf", nil, nil)
+	if w.Code != 503 || !strings.Contains(w.Body.String(), "Un export este deja în curs") || w.Header().Get("Retry-After") == "" {
+		t.Fatal(w.Code, w.Body.String())
+	}
+}

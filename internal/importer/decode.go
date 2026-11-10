@@ -68,9 +68,12 @@ func decodeText(data []byte) (string, string) {
 
 // detectSeparator counts candidate separators in the first line, outside quotes.
 func detectSeparator(text string) rune {
-	line := text
-	if i := strings.IndexAny(text, "\r\n"); i >= 0 {
-		line = text[:i]
+	line := ""
+	for _, l := range strings.Split(text, "\n") {
+		if strings.TrimSpace(l) != "" {
+			line = l // the first non-blank line is the header
+			break
+		}
 	}
 	counts := map[rune]int{}
 	quoted := false

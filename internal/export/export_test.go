@@ -190,3 +190,11 @@ func TestSafe(t *testing.T) {
 		}
 	}
 }
+
+func TestLocationsCSVDecimalComma(t *testing.T) {
+	var c bytes.Buffer
+	LocationsCSV(&c, sampleLocations())
+	if !strings.Contains(c.String(), ";46,123456789;29,66;") {
+		t.Fatalf("coordinates must use a decimal comma (Excel RO reads 29.66 as a date): %s", c.String())
+	}
+}

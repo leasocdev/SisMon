@@ -67,6 +67,41 @@ func Parse(filename string, data []byte) (*Table, error) {
 	return t, nil
 }
 
+// Limits that keep a hostile file from exhausting memory.
+const (
+	maxCells     = 50      // cells per row (after trailing empty cells)
+	maxTextBytes = 8 << 20 // total cell text in one file
+)
+
+// collector accumulates non-blank rows within the limits.
+type collector struct {
+	rows  []RawRow
+	bytes int
+}
+
+func (c *collector) add(line int, cells []string) error {
+	for len(cells) > 0 && strings.TrimSpace(cells[len(cells)-1]) == "" {
+		cells = cells[:len(cells)-1]
+	}
+	if len(cells) == 0 {
+		return nil // blank rows are ignored and not counted
+	}
+	if len(cells) > maxCells {
+		return fileError(fmt.Sprintf("Fișierul are prea multe coloane (rândul %d).", line))
+	}
+	for _, s := range cells {
+		c.bytes += len(s)
+	}
+	if c.bytes > maxTextBytes {
+		return fileError("Fișierul conține prea mult text pentru o listă de locații.")
+	}
+	c.rows = append(c.rows, RawRow{Line: line, Cells: cells})
+	if len(c.rows) > MaxRows+1 { // header + MaxRows data rows
+		return fileError(fmt.Sprintf("Fișierul are mai mult de %d de rânduri.", MaxRows))
+	}
+	return nil
+}
+
 func parseCSV(data []byte) (*Table, error) {
 	head := data
 	if len(head) > 8192 {
@@ -81,7 +116,8 @@ func parseCSV(data []byte) (*Table, error) {
 	r.Comma = sep
 	r.LazyQuotes = true
 	r.FieldsPerRecord = -1
-	var records []RawRow
+	r.ReuseRecord = false
+	var c collector
 	for {
 		rec, err := r.Read()
 		if errors.Is(err, io.EOF) {
@@ -91,16 +127,15 @@ func parseCSV(data []byte) (*Table, error) {
 			return nil, fileError("Fișierul nu poate fi citit ca CSV sau XLSX.")
 		}
 		line, _ := r.FieldPos(0)
-		records = append(records, RawRow{Line: line, Cells: rec})
-		if len(records) > MaxRows+1 {
-			break
+		if err := c.add(line, rec); err != nil {
+			return nil, err
 		}
 	}
-	return table("csv", enc, string(sep), records)
+	return table("csv", enc, string(sep), c.rows)
 }
 
 func parseXLSX(data []byte) (*Table, error) {
-	f, err := excelize.OpenReader(bytes.NewReader(data), excelize.Options{UnzipSizeLimit: 50 << 20, UnzipXMLSizeLimit: 20 << 20})
+	f, err := excelize.OpenReader(bytes.NewReader(data), excelize.Options{UnzipSizeLimit: 20 << 20, UnzipXMLSizeLimit: 10 << 20})
 	if err != nil {
 		return nil, fileError("Fișierul nu poate fi citit ca CSV sau XLSX.")
 	}
@@ -109,18 +144,26 @@ func parseXLSX(data []byte) (*Table, error) {
 	if len(sheets) == 0 {
 		return nil, fileError("Fișierul este gol.")
 	}
-	rows, err := f.GetRows(sheets[0], excelize.Options{RawCellValue: true})
+	// Stream row by row so the limits apply before the whole sheet is built.
+	rows, err := f.Rows(sheets[0])
 	if err != nil {
 		return nil, fileError("Fișierul nu poate fi citit ca CSV sau XLSX.")
 	}
-	records := make([]RawRow, 0, len(rows))
-	for i, r := range rows {
-		records = append(records, RawRow{Line: i + 1, Cells: r})
-		if len(records) > MaxRows+1 {
-			break
+	defer rows.Close()
+	var c collector
+	for line := 1; rows.Next(); line++ {
+		cells, err := rows.Columns(excelize.Options{RawCellValue: true})
+		if err != nil {
+			return nil, fileError("Fișierul nu poate fi citit ca CSV sau XLSX.")
+		}
+		if err := c.add(line, cells); err != nil {
+			return nil, err
 		}
 	}
-	return table("xlsx", "", "", records)
+	if rows.Error() != nil {
+		return nil, fileError("Fișierul nu poate fi citit ca CSV sau XLSX.")
+	}
+	return table("xlsx", "", "", c.rows)
 }
 
 func blank(cells []string) bool {

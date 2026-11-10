@@ -175,7 +175,7 @@ func LocationsXLSX(w io.Writer, locs []store.Location) error {
 		return err
 	}
 	s.header(locationsCols)
-	for _, r := range locationRows(locs) {
+	for _, r := range locationRows(locs, false) {
 		cells := make([]any, len(r))
 		for i, c := range r {
 			cells[i] = c

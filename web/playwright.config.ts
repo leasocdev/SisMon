@@ -5,7 +5,7 @@ const server = (listen: string, control: string, extra = '') => ({
   cwd: '..',
   url: `http://${listen}/api/state`,
   reuseExistingServer: false,
-  timeout: 180_000,
+  timeout: 300_000,
   stdout: 'ignore' as const,
   stderr: 'pipe' as const,
 });

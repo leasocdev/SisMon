@@ -66,6 +66,14 @@ func (p *public) exportStats(w http.ResponseWriter, r *http.Request) {
 		writeError(w, apperr.Invalid("format", "Formatul de export acceptă: csv, xlsx, pdf."))
 		return
 	}
+	select {
+	case p.d.exportSem <- struct{}{}:
+		defer func() { <-p.d.exportSem }()
+	default:
+		w.Header().Set("Retry-After", "5")
+		writeError(w, &apperr.Error{Status: http.StatusServiceUnavailable, Message: "Un export este deja în curs; reîncercați peste câteva secunde."})
+		return
+	}
 	now := p.d.Now()
 	q, err := stats.ParseQuery(r.URL.Query(), now)
 	if err != nil {

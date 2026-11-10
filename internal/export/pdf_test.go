@@ -68,3 +68,32 @@ func TestPDFWithLogo(t *testing.T) {
 		t.Fatal("logo missing")
 	}
 }
+
+func TestPDFIncidentCap(t *testing.T) {
+	var rows []stats.IncidentRow
+	for i := 0; i < MaxPDFIncidents+500; i++ {
+		rows = append(rows, stats.IncidentRow{ID: int64(i), ObservedAt: int64(i) * 1000})
+	}
+	shown, omitted := pdfIncidents(rows)
+	if len(shown) != MaxPDFIncidents || omitted != 500 {
+		t.Fatal(len(shown), omitted)
+	}
+	if shown[0].ID != 500 || shown[len(shown)-1].ID != int64(MaxPDFIncidents+499) {
+		t.Fatal("must keep the most recent incidents in their order", shown[0].ID)
+	}
+	if s, o := pdfIncidents(rows[:10]); len(s) != 10 || o != 0 {
+		t.Fatal("small lists unchanged")
+	}
+}
+
+func TestLogoBox(t *testing.T) {
+	for _, c := range []struct{ w, h, maxW, maxH float64 }{{1024, 64, 40, 14}, {64, 64, 40, 14}, {100, 1000, 40, 14}} {
+		w, h := logoBox(c.w, c.h)
+		if w > c.maxW+1e-9 || h > c.maxH+1e-9 || w <= 0 || h <= 0 {
+			t.Fatalf("%v → %v×%v", c, w, h)
+		}
+		if r := w / h; r < c.w/c.h*0.99 || r > c.w/c.h*1.01 {
+			t.Fatalf("aspect ratio lost for %v: %v×%v", c, w, h)
+		}
+	}
+}

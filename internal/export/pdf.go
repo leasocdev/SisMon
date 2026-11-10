@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 
 	"github.com/go-pdf/fpdf"
@@ -137,8 +138,10 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 		opt := fpdf.ImageOptions{ImageType: "PNG", ReadDpi: false}
 		f.RegisterImageOptionsReader("logo", opt, bytes.NewReader(m.Logo))
 		if f.Ok() {
-			f.ImageOptions("logo", margin, margin, 0, 14, false, opt, 0, "")
-			x = margin + 40
+			info := f.GetImageInfo("logo")
+			lw, lh := logoBox(info.Width(), info.Height())
+			f.ImageOptions("logo", margin, margin, lw, lh, false, opt, 0, "")
+			x = margin + lw + 4
 		} else {
 			f.ClearError() // an unreadable logo must not prevent the report
 		}
@@ -262,7 +265,8 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 	p.heading("Incidente")
 	incCols := []col{{"Locație", 60, "L"}, {"Echipament", 55, "L"}, {"Început", 30, "L"}, {"Confirmat", 30, "L"}, {"Sfârșit", 30, "L"}, {"Durată", 25, "R"}, {"Motiv", 47, "L"}}
 	rows = rows[:0]
-	for _, i := range rep.Incidents {
+	incidents, omitted := pdfIncidents(rep.Incidents)
+	for _, i := range incidents {
 		end := "—"
 		if i.EndedAt != nil {
 			end = fmtMs(*i.EndedAt)
@@ -270,9 +274,50 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 		rows = append(rows, []string{i.Location, i.Device, fmtMs(i.ObservedAt), fmtMs(i.ConfirmedAt), end, dur(i.DurationS), i.ReasonText})
 	}
 	p.table(incCols, rows, "Niciun incident în perioada selectată.")
+	if omitted > 0 {
+		f.SetFont("dejavu", "", 8)
+		f.CellFormat(0, 6, fmt.Sprintf("… și încă %d incidente mai vechi — lista completă se află în exportul CSV sau Excel.", omitted), "", 1, "L", false, 0, "")
+	}
 
 	if err := f.Error(); err != nil {
 		return err
 	}
 	return f.Output(w)
+}
+
+// MaxPDFIncidents bounds the incident table of the PDF (the full list is in
+// the CSV/XLSX exports).
+const MaxPDFIncidents = 2000
+
+// pdfIncidents keeps the most recent MaxPDFIncidents incidents, in their order.
+func pdfIncidents(rows []stats.IncidentRow) ([]stats.IncidentRow, int) {
+	if len(rows) <= MaxPDFIncidents {
+		return rows, 0
+	}
+	idx := make([]int, len(rows))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return rows[idx[a]].ObservedAt > rows[idx[b]].ObservedAt })
+	keep := map[int]bool{}
+	for _, i := range idx[:MaxPDFIncidents] {
+		keep[i] = true
+	}
+	out := make([]stats.IncidentRow, 0, MaxPDFIncidents)
+	for i, r := range rows {
+		if keep[i] {
+			out = append(out, r)
+		}
+	}
+	return out, len(rows) - MaxPDFIncidents
+}
+
+// logoBox scales an image of wPx×hPx to fit 40×14 mm, keeping its proportions.
+func logoBox(wPx, hPx float64) (float64, float64) {
+	const maxW, maxH = 40.0, 14.0
+	if wPx <= 0 || hPx <= 0 {
+		return maxH, maxH
+	}
+	s := min(maxW/wPx, maxH/hPx)
+	return wPx * s, hPx * s
 }

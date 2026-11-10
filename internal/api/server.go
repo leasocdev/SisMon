@@ -56,12 +56,18 @@ type Deps struct {
 	// Sleep applies the login failure delay; nil means a real, ctx-aware sleep.
 	Sleep func(ctx context.Context, d time.Duration)
 
+	// exportSem caps concurrent statistics exports (each one builds a whole report in memory).
+	exportSem chan struct{}
+
 	// loginSem caps concurrent password verifications (argon2id uses 64 MiB each).
 	loginSem chan struct{}
 }
 
 // LoginConcurrency is the number of password checks allowed at once.
 const LoginConcurrency = 2
+
+// ExportConcurrency is the number of statistics exports built at once.
+const ExportConcurrency = 2
 
 func realSleep(ctx context.Context, d time.Duration) {
 	t := time.NewTimer(d)
@@ -87,6 +93,9 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	}
 	if d.loginSem == nil {
 		d.loginSem = make(chan struct{}, LoginConcurrency)
+	}
+	if d.exportSem == nil {
+		d.exportSem = make(chan struct{}, ExportConcurrency)
 	}
 	mux := http.NewServeMux()
 	p := &public{d}

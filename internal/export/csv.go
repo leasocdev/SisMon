@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"io"
 	"strconv"
+	"strings"
 
 	"netwatch/internal/stats"
 	"netwatch/internal/store"
@@ -104,19 +105,24 @@ func StatsCSV(w io.Writer, rep stats.Report, m Meta) error {
 	return c.Error()
 }
 
-func coord(v *float64) string {
+func coord(v *float64, comma bool) string {
 	if v == nil {
 		return ""
 	}
-	return strconv.FormatFloat(*v, 'f', -1, 64)
+	s := strconv.FormatFloat(*v, 'f', -1, 64)
+	if comma {
+		// Excel with Romanian settings would read "29.66" as a date
+		s = strings.Replace(s, ".", ",", 1)
+	}
+	return s
 }
 
 // locationRows are the rows of the import format (values unchanged).
-func locationRows(locs []store.Location) [][]string {
+func locationRows(locs []store.Location, decimalComma bool) [][]string {
 	var rows [][]string
 	for _, l := range locs {
 		for _, d := range l.Devices {
-			rows = append(rows, []string{l.Name, l.Address, coord(l.Lat), coord(l.Lon), d.Name, d.Host, d.Kind, yesNo(d.Primary), l.Notes})
+			rows = append(rows, []string{l.Name, l.Address, coord(l.Lat, decimalComma), coord(l.Lon, decimalComma), d.Name, d.Host, d.Kind, yesNo(d.Primary), l.Notes})
 		}
 	}
 	return rows
@@ -131,7 +137,7 @@ func LocationsCSV(w io.Writer, locs []store.Location) error {
 	if err := c.Write(locationsCols); err != nil {
 		return err
 	}
-	if err := c.WriteAll(locationRows(locs)); err != nil {
+	if err := c.WriteAll(locationRows(locs, true)); err != nil {
 		return err
 	}
 	return c.Error()

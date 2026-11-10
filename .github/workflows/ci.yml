@@ -39,6 +39,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
           NETWATCH_REQUIRE_ICMP: "1"
+          NETWATCH_REQUIRE_ICMP6: ${{ runner.os == 'Linux' && '1' || '' }}
           NETWATCH_EXPECT_ICMP_MODE: ${{ runner.os == 'Linux' && 'linux-unprivileged' || 'windows' }}
         run: go test -race -count=1 ./...
 
@@ -46,8 +47,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo sysctl -w net.ipv4.ping_group_range="1 0"
-          sudo env "PATH=$PATH" "GOCACHE=$(go env GOCACHE)" "GOMODCACHE=$(go env GOMODCACHE)" \
-            NETWATCH_REQUIRE_ICMP=1 NETWATCH_EXPECT_ICMP_MODE=linux-raw \
+          # separate build cache: root-owned files must not end up in the cached GOCACHE
+          sudo env "PATH=$PATH" "GOCACHE=$RUNNER_TEMP/rootcache" "GOMODCACHE=$(go env GOMODCACHE)" \
+            NETWATCH_REQUIRE_ICMP=1 NETWATCH_REQUIRE_ICMP6=1 NETWATCH_EXPECT_ICMP_MODE=linux-raw \
             go test -count=1 -run Real -v ./internal/monitor/icmp
 
   web:
@@ -81,6 +83,9 @@ jobs:
       - name: Browser Chromium
         working-directory: web
         run: npx playwright install --with-deps chromium
+
+      - name: Compilare server de test (încălzește cache-ul pentru Playwright)
+        run: go build -o "$RUNNER_TEMP/e2eserver" ./tools/e2eserver
 
       - name: Teste end-to-end
         working-directory: web

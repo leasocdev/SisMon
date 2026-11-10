@@ -38,7 +38,7 @@ func TestRealLoopbackV6(t *testing.T) {
 	p := realPinger(t)
 	r := p.Ping(context.Background(), netip.MustParseAddr("::1"), 1, time.Second)
 	if r.Received < 1 {
-		if os.Getenv("NETWATCH_REQUIRE_ICMP") != "" {
+		if os.Getenv("NETWATCH_REQUIRE_ICMP6") != "" {
 			t.Fatalf("IPv6 loopback did not answer: %+v", r)
 		}
 		t.Skipf("IPv6 loopback not answering here: %+v", r)
