@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import Announcer from './components/Announcer.svelte';
+  import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
+  import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
+  import { beeper, soundFor, soundPrefs } from './lib/sound.svelte';
   import { applyTheme, initialTheme, saveTheme, storedTheme, type Theme } from './lib/theme';
 
   const prefersDark = typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
-  let theme = $state<Theme>(initialTheme(storedTheme(), prefersDark, router.route.name));
+  const queryTheme = router.route.query.tema === 'luminoasa' ? 'light' : router.route.query.tema === 'intunecata' ? 'dark' : null;
+  let theme = $state<Theme>(queryTheme ?? initialTheme(storedTheme(), prefersDark, router.route.name));
 
   $effect(() => applyTheme(theme));
 
@@ -12,6 +18,21 @@
     theme = t;
     saveTheme(t);
   }
+
+  const SOUND_ROUTES = ['monitor', 'location', 'dispatch', 'report'];
+
+  onMount(() => {
+    live.start();
+    const off = live.onChange((prev, next) => {
+      if (!SOUND_ROUTES.includes(router.route.name)) return;
+      const kind = soundFor(prev?.state, next?.state, soundPrefs);
+      if (kind) beeper.play(kind);
+    });
+    return () => {
+      off();
+      live.stop();
+    };
+  });
 
   const titles: Record<string, string> = {
     monitor: 'Monitorizare',
@@ -27,13 +48,16 @@
   };
 
   $effect(() => {
-    document.title = `${titles[router.route.name]} · NetWatch`;
+    document.title = `${titles[router.route.name]} · ${live.identity.name}`;
   });
 </script>
 
 {#if router.route.name !== 'dispatch'}
-  <Header name="NetWatch" subtitle="NETWORK MONITOR" {theme} onTheme={setTheme} />
+  <Header name={live.identity.name} subtitle={live.identity.subtitle} {theme} onTheme={setTheme}>
+    {#snippet status()}<ConnectionBadge />{/snippet}
+  </Header>
 {/if}
+<Announcer />
 <main id="continut">
   {#if router.route.name === 'notFound'}
     <div class="page">
