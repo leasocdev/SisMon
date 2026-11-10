@@ -11,6 +11,7 @@
   let { fill = true }: { fill?: boolean } = $props();
 
   let host: HTMLDivElement;
+  let wrap: HTMLDivElement;
   let fallback = $state(false);
   let ready = $state(false);
 
@@ -24,7 +25,6 @@
   let fitted = false;
 
   const located = $derived(live.locations.filter((l) => l.lat != null && l.lon != null));
-  const unlocated = $derived(live.locations.filter((l) => l.lat == null || l.lon == null));
 
   function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''): HTMLElementTagNameMap[K] {
     const e = document.createElement(tag);
@@ -37,6 +37,7 @@
     const s = el('span', `nw-marker state-${l.state}`, STATE_SYMBOL[l.state]);
     s.dataset.id = String(l.id);
     s.setAttribute('aria-hidden', 'true');
+    s.append(el('span', 'nw-label', l.name));
     return L.divIcon({ html: s, className: 'nw-icon', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -12] });
   }
 
@@ -71,6 +72,70 @@
     return L.divIcon({ html: s, className: 'nw-icon', iconSize: [34, 34] });
   }
 
+  // Labels: placed right/left/above/below the marker, worst state first; a label
+  // that would overlap another label or marker is hidden until zoomed in.
+  let rafId = 0;
+  function scheduleLabels() {
+    if (!rafId) rafId = requestAnimationFrame(() => ((rafId = 0), placeLabels()));
+  }
+  type Rect = { x1: number; y1: number; x2: number; y2: number };
+  const hit = (a: Rect, b: Rect) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+
+  function placeLabels() {
+    if (!ready || !host) return;
+    const size = map.getSize();
+    const vis: { pt: Leaflet.Point; label: HTMLElement; state: State }[] = [];
+    const placed: Rect[] = [];
+    for (const cur of markers.values()) {
+      if (cluster.getVisibleParent(cur.m) !== cur.m) continue;
+      const label = cur.m.getElement()?.querySelector<HTMLElement>('.nw-label');
+      if (!label) continue;
+      const pt = map.latLngToContainerPoint(cur.m.getLatLng());
+      placed.push({ x1: pt.x - 14, y1: pt.y - 14, x2: pt.x + 14, y2: pt.y + 14 });
+      vis.push({ pt, label, state: cur.state });
+    }
+    // cluster bubbles also take room
+    host.querySelectorAll<HTMLElement>('.nw-cluster').forEach((c) => {
+      const r = c.getBoundingClientRect();
+      const o = host.getBoundingClientRect();
+      placed.push({ x1: r.left - o.left - 2, y1: r.top - o.top - 2, x2: r.right - o.left + 2, y2: r.bottom - o.top + 2 });
+    });
+    vis.sort((a, b) => severity(a.state) - severity(b.state));
+    for (const v of vis) {
+      const w = v.label.offsetWidth;
+      const h = v.label.offsetHeight;
+      const { x, y } = v.pt;
+      const options: [string, Rect][] = [
+        ['right', { x1: x + 17, y1: y - h / 2, x2: x + 17 + w, y2: y + h / 2 }],
+        ['left', { x1: x - 17 - w, y1: y - h / 2, x2: x - 17, y2: y + h / 2 }],
+        ['top', { x1: x - w / 2, y1: y - 17 - h, x2: x + w / 2, y2: y - 17 }],
+        ['bottom', { x1: x - w / 2, y1: y + 17, x2: x + w / 2, y2: y + 17 + h }],
+      ];
+      let chosen = '';
+      for (const [pos, r] of options) {
+        if (r.x1 < 0 || r.y1 < 0 || r.x2 > size.x || r.y2 > size.y) continue;
+        if (placed.some((p) => hit(p, r))) continue;
+        chosen = pos;
+        placed.push(r);
+        break;
+      }
+      v.label.className = chosen ? `nw-label pos-${chosen}` : 'nw-label';
+    }
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else wrap.requestFullscreen?.();
+  }
+
+  /** Fits every located site in the view with a minimal margin. */
+  function recenter(animate = true) {
+    if (!ready || !located.length) return;
+    map.invalidateSize();
+    const b = L.latLngBounds(located.map((l) => [l.lat!, l.lon!] as [number, number]));
+    map.fitBounds(b, { padding: [24, 24], maxZoom: located.length === 1 ? 14 : 17, animate });
+  }
+
   function sync(list: LocationView[]) {
     if (!ready) return;
     const seen = new Set<number>();
@@ -101,9 +166,10 @@
       }
     }
     cluster.refreshClusters();
+    scheduleLabels();
     if (!fitted && list.length && host.clientWidth > 0) {
       fitted = true;
-      map.fitBounds(L.latLngBounds(list.map((l) => [l.lat!, l.lon!] as [number, number])), { padding: [40, 40], maxZoom: 12, animate: false });
+      recenter(false);
     }
   }
 
@@ -160,8 +226,35 @@
         if (health.shouldFallback(Date.now())) enterFallback();
       });
       tiles.addTo(map);
+      const Recenter = L.Control.extend({
+        onAdd() {
+          const b = el('button', 'nw-recenter', '⌖ Centrează');
+          b.type = 'button';
+          b.title = 'Încadrează toate locațiile în fereastră';
+          L.DomEvent.disableClickPropagation(b);
+          b.addEventListener('click', () => recenter());
+          return b;
+        },
+      });
+      new Recenter({ position: 'topright' }).addTo(map);
+      const Full = L.Control.extend({
+        onAdd() {
+          const b = el('button', 'nw-recenter', '⛶ Ecran complet');
+          b.type = 'button';
+          b.title = 'Ecran complet (Esc pentru ieșire)';
+          L.DomEvent.disableClickPropagation(b);
+          b.addEventListener('click', toggleFullscreen);
+          document.addEventListener('fullscreenchange', () => {
+            b.textContent = document.fullscreenElement ? '⛶ Ieșire ecran complet' : '⛶ Ecran complet';
+          });
+          return b;
+        },
+      });
+      new Full({ position: 'topright' }).addTo(map);
+      map.on('moveend zoomend resize', scheduleLabels);
       cluster = L.markerClusterGroup({ iconCreateFunction: clusterIcon, maxClusterRadius: 40, showCoverageOnHover: false });
       map.addLayer(cluster);
+      cluster.on('animationend', scheduleLabels);
       ready = true;
       sync(located);
       timer = setInterval(probe, 60_000);
@@ -170,10 +263,13 @@
       if (!ready) return;
       map.invalidateSize();
       if (!fitted) sync(located);
+      scheduleLabels();
     });
     ro.observe(host);
     return () => {
       alive = false;
+      ready = false;
+      if (rafId) cancelAnimationFrame(rafId);
       ro.disconnect();
       if (timer) clearInterval(timer);
       map?.stop();
@@ -187,15 +283,12 @@
   });
 </script>
 
-<div class="mapwrap" class:fill>
+<div class="mapwrap" class:fill bind:this={wrap}>
   <div class="map" bind:this={host} aria-label="Hartă locații"></div>
   {#if fallback}
     <p class="fallback-note" role="status">Dalele OpenStreetMap nu se încarcă — se afișează contururi locale. Se reîncearcă automat.</p>
   {/if}
 </div>
-{#if unlocated.length}
-  <p class="no-coords muted">Fără coordonate: {unlocated.map((l) => l.name).join(', ')}</p>
-{/if}
 
 <style>
   .mapwrap {
@@ -203,6 +296,9 @@
     height: 420px;
   }
   .mapwrap.fill {
+    height: 100%;
+  }
+.mapwrap:fullscreen {
     height: 100%;
   }
   .map {
@@ -222,10 +318,6 @@
     background: var(--warn-bg);
     border: 1px solid var(--c-degraded);
     color: var(--fg);
-    font-size: 0.9em;
-  }
-  .no-coords {
-    margin: 6px 0 0;
     font-size: 0.9em;
   }
   :global(.nw-icon) {
@@ -269,6 +361,56 @@
   :global(.nw-cluster.state-error) {
     background: var(--c-error);
     color: var(--on-error);
+  }
+  :global(.nw-marker) {
+    position: relative;
+  }
+  :global(.nw-label) {
+    position: absolute;
+    visibility: hidden;
+    white-space: nowrap;
+    pointer-events: none;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--fg);
+    text-shadow: -1px -1px 0 var(--surface), 1px -1px 0 var(--surface), -1px 1px 0 var(--surface), 1px 1px 0 var(--surface), 0 0 3px var(--surface);
+  }
+  :global(.nw-label[class*='pos-']) {
+    visibility: visible;
+  }
+  :global(.nw-label.pos-right) {
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  :global(.nw-label.pos-left) {
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+  :global(.nw-label.pos-top) {
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  :global(.nw-label.pos-bottom) {
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  :global(.nw-recenter) {
+    font: inherit;
+    font-weight: 700;
+    padding: 7px 12px;
+    background: var(--surface);
+    color: var(--fg);
+    border: 2px solid rgb(0 0 0 / 0.35);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  :global(.nw-recenter:hover) {
+    background: var(--surface-2);
   }
   :global(.nw-popup ul) {
     margin: 4px 0;

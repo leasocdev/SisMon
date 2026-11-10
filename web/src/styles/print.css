@@ -20,7 +20,6 @@
   }
   .hdr,
   .no-print,
-  .sound,
   [role='status'] {
     display: none !important;
   }

@@ -67,26 +67,30 @@
     padding: 10px 12px;
     color: var(--fg);
     text-decoration: none;
-    border-left: 5px solid var(--c-unknown);
+    border: 2px solid var(--sc, var(--c-unknown));
+    border-left-width: 9px;
+    background: color-mix(in srgb, var(--sc, var(--c-unknown)) 14%, var(--surface));
     min-width: 0;
   }
   .loc-card:hover {
-    border-color: var(--focus);
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
   }
   .state-up {
-    border-left-color: var(--c-up);
+    --sc: var(--c-up);
   }
   .state-down {
-    border-left-color: var(--c-down);
+    --sc: var(--c-down);
+    box-shadow: 0 0 0 1px var(--c-down);
   }
   .state-degraded {
-    border-left-color: var(--c-degraded);
+    --sc: var(--c-degraded);
   }
   .state-error {
-    border-left-color: var(--c-error);
+    --sc: var(--c-error);
   }
   .stale {
-    border-left-color: var(--c-unknown);
+    --sc: var(--c-unknown);
     opacity: 0.85;
   }
   .head {
@@ -97,13 +101,14 @@
   }
   .name {
     margin: 0;
-    font-size: 1.05em;
+    font-size: 1.12em;
+    font-weight: 700;
     overflow-wrap: anywhere;
   }
   .meta {
     display: flex;
     gap: 8px;
-    color: var(--muted);
+    color: var(--fg);
     font-size: 0.86em;
     min-height: 1.2em;
   }
@@ -133,11 +138,13 @@
     white-space: nowrap;
   }
   .star {
-    color: var(--c-degraded);
+    color: #f2b400;
+    text-shadow: 0 0 1px rgb(0 0 0 / 0.6);
     margin-right: 2px;
   }
   .host {
-    color: var(--muted);
+    color: var(--fg);
+    opacity: 0.75;
     font-family: var(--mono);
     font-size: 0.92em;
   }
@@ -146,7 +153,7 @@
     white-space: nowrap;
   }
   .pending {
-    color: var(--c-degraded);
+    color: var(--c-degraded-text);
     font-style: italic;
   }
   .large {

@@ -13,7 +13,6 @@
   import LocationPanel from './pages/LocationPanel.svelte';
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
-  import { beeper, soundAllowed, soundFor, soundPrefs } from './lib/sound.svelte';
   import { applyTheme, effectiveTheme, saveTheme, storedTheme, validTheme, type Theme } from './lib/theme';
 
   const media = typeof matchMedia !== 'undefined' ? matchMedia('(prefers-color-scheme: dark)') : null;
@@ -35,13 +34,7 @@
     live.start();
     const onScheme = (e: MediaQueryListEvent) => (systemDark = e.matches);
     media?.addEventListener('change', onScheme);
-    const off = live.onChange((prev, next) => {
-      if (!soundAllowed(router.route.name)) return;
-      const kind = soundFor(prev?.state, next?.state, soundPrefs);
-      if (kind) beeper.play(kind);
-    });
     return () => {
-      off();
       live.stop();
       media?.removeEventListener('change', onScheme);
     };
@@ -67,7 +60,14 @@
 
 {#if router.route.name !== 'dispatch'}<DemoBanner />{/if}
 {#if router.route.name !== 'dispatch'}
-  <Header name={live.identity.name} subtitle={live.identity.subtitle} logoVersion={live.identity.logo_version} {theme} onTheme={setTheme}>
+  <Header
+    name={live.identity.name}
+    subtitle={live.identity.subtitle}
+    logoVersion={live.identity.logo_version}
+    {theme}
+    onTheme={setTheme}
+    minimal={router.route.name === 'admin' || router.route.name === 'adminLocation' || router.route.name === 'adminPage'}
+  >
     {#snippet status()}<ConnectionBadge />{/snippet}
   </Header>
 {/if}

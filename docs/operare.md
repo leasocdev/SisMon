@@ -182,24 +182,18 @@ Adresa: `http://SERVER:8501/dispecerat`. Opțiuni în URL, combinabile:
 | Opțiune | Efect |
 |---|---|
 | `?rotatie=60` | alternează grila cu harta la fiecare 60 s (minimum 10) |
-| `?sunet=1` | pornește alertele sonore pe acest ecran |
 | `?tema=luminoasa` | tema luminoasă (implicit: întunecată) |
 
 Exemplu de mod kiosk (Chrome/Edge):
 
 ```
-chrome --kiosk --autoplay-policy=no-user-gesture-required "http://SERVER:8501/dispecerat?rotatie=60&sunet=1"
+chrome --kiosk "http://SERVER:8501/dispecerat?rotatie=60"
 ```
 
-- Fără `--autoplay-policy`, browserul poate bloca sunetul până la primul click; butonul afișează atunci „Click pentru a activa sunetul”.
 - Dacă legătura cu serverul se pierde peste 30 de secunde, ecranul se încadrează în gri și afișează „DATE NEACTUALIZATE”. Revenirea este automată.
 - Grila se dimensionează singură pentru a încăpea fără derulare (testat cu 60 de locații la 1920×1080).
 
-## 12. Alerte sonore
-
-Butonul „Sunet” apare pe Monitorizare, Dispecerat și Raport 24H; preferința se reține în browser. Se aude un semnal la apariția unei locații indisponibile (opțional și la degradare) și un semnal diferit la revenire. Locațiile deja căzute la deschiderea paginii nu declanșează semnal.
-
-## 13. Import și export
+## 12. Import și export
 
 **Import locații** (Administrare → Import / export): fișier CSV sau Excel (.xlsx), cel mult 5 MB, 1000 de rânduri și 200 de locații.
 
@@ -218,14 +212,14 @@ Butonul „Sunet” apare pe Monitorizare, Dispecerat și Raport 24H; preferinț
 - PDF: A4 orientat peisaj, cu logo, rezumat, tabel echipamente, bare de stare pe locații și incidente; fontul DejaVu Sans este încorporat.
 - Valorile care încep cu `=`, `+`, `-`, `@` primesc prefixul `'` în exporturile statistice, ca Excel să nu le execute ca formule.
 
-## 14. Logo
+## 13. Logo
 
 Administrare → Identitate → Logo: PNG de cel mult 1024 × 1024 pixeli și 500 KB. Serverul verifică și reencodează imaginea. Logo-ul apare în antet, pe ecranul de dispecerat, în Raportul 24H și în PDF. Se păstrează în `DIR/branding/logo.png` — nu face parte din backup-ul bazei; după mutarea pe alt server, încărcați-l din nou.
 
-## 15. Mod demonstrativ
+## 14. Mod demonstrativ
 
 `netwatch demo [--data demo-data] [--listen :8502]` pornește o instanță separată cu 12 locații simulate și scenarii care se repetă (de exemplu Cahul cade 6 minute din 30, Orhei este degradat periodic, Soroca are latență mare). Verificările rulează de 6 ori mai des decât în mod normal, ca statisticile să se umple repede. Parola de administrare: `netwatch-demo`. Bannerul „MOD DEMONSTRATIV” apare pe toate paginile.
 
-## 16. Versiuni noi
+## 15. Versiuni noi
 
 Binarele se produc cu `go run ./tools/release --version X.Y.Z` (sau automat de CI la eticheta `vX.Y.Z`), împreună cu `SHA256SUMS`. Verificați suma de control înainte de instalare (`sha256sum -c SHA256SUMS` pe Linux, `Get-FileHash` pe Windows), apoi urmați secțiunea 6.

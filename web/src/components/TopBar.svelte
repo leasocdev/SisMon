@@ -3,7 +3,6 @@
   import { live } from '../lib/live.svelte';
   import { STATE_PLURAL, STATE_SYMBOL, STATES, totals, type SortMode } from '../lib/status';
   import type { State } from '../lib/types';
-  import SoundToggle from './SoundToggle.svelte';
 
   let {
     filter = $bindable(),
@@ -57,7 +56,6 @@
       <option value="manual">manuală</option>
     </select>
   </label>
-  <SoundToggle />
 </div>
 {#if warning}
   <div class="notice warn" role="alert">⚠ {warning}</div>
@@ -107,6 +105,7 @@
     max-width: 100%;
   }
   .sort {
+    margin-left: auto;
     display: inline-flex;
     gap: 6px;
     align-items: center;

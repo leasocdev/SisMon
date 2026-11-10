@@ -31,7 +31,12 @@ func (p *public) exportMeta(r *http.Request, q stats.Query) (export.Meta, error)
 	if err != nil {
 		return export.Meta{}, err
 	}
-	m := export.Meta{Title: id.ReportTitle, AppName: id.Name, From: q.From, To: q.To, Generated: p.d.Now()}
+	// Reports are headed by the subtitle; the application name is the fallback.
+	label := id.Subtitle
+	if label == "" {
+		label = id.Name
+	}
+	m := export.Meta{Title: id.ReportTitle, AppName: label, From: q.From, To: q.To, Generated: p.d.Now()}
 	locs, err := p.d.Store.ListLocations(r.Context(), true)
 	if err != nil {
 		return m, err

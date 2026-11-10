@@ -27,7 +27,6 @@
   let latText = $state('');
   let lonText = $state('');
   let defaults = $state<Settings | null>(null);
-  let kinds = $state<string[]>([]);
   let loaded = $state(false);
   let notFound = $state(false);
   let busy = $state(false);
@@ -60,7 +59,6 @@
     try {
       const [list, s] = await Promise.all([get<{ locations: AdminLocation[] }>('/api/admin/locations'), get<Settings>('/api/admin/settings')]);
       defaults = s;
-      kinds = [...new Set(list.locations.flatMap((l) => l.devices.map((d) => d.kind)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ro'));
       if (id != null) {
         const l = list.locations.find((x) => x.id === id);
         if (!l) notFound = true;
@@ -224,9 +222,10 @@
           <input id="loc-lon" inputmode="decimal" bind:value={lonText} onchange={coordsFromText} aria-invalid={!!fieldErrors.lon} />
           {#if fieldErrors.lon}<p class="error-text">{fieldErrors.lon}</p>{/if}
         </div>
-        {#if form.lat != null}
-          <button type="button" onclick={clearCoords}>Șterge coordonatele</button>
-        {/if}
+        <div class="field clear">
+          <span class="spacer-lbl" aria-hidden="true">&nbsp;</span>
+          <button type="button" onclick={clearCoords} disabled={form.lat == null && form.lon == null && !latText && !lonText}>Șterge coordonatele</button>
+        </div>
       </div>
       <CoordPicker lat={form.lat} lon={form.lon} onPick={pick} />
     </fieldset>
@@ -240,7 +239,6 @@
           count={rows.length}
           errors={rowErrors[i] ?? {}}
           {defaults}
-          {kinds}
           onMove={(to) => move(i, to)}
           onRemove={() => remove(i)}
           onDragStart={() => (dragFrom = i)}
@@ -257,6 +255,11 @@
       <button type="button" onclick={cancel}>Renunță</button>
       {#if dirty}<span class="muted">Modificări nesalvate</span>{/if}
       <span class="spacer"></span>
+      {#if isNew}
+        <button type="button" disabled title="Disponibil după salvarea locației">Adaugă locație</button>
+      {:else}
+        <a class="btn" href="/administrare/locatie/nou">Adaugă locație</a>
+      {/if}
       {#if !isNew}<button type="button" class="danger" onclick={archive}>Arhivează</button>{/if}
     </div>
   </form>
@@ -287,8 +290,15 @@
   .coords {
     display: flex;
     gap: 12px;
-    align-items: flex-end;
+    align-items: flex-start;
     flex-wrap: wrap;
+  }
+  .coords .field {
+    margin-bottom: 10px;
+  }
+  .spacer-lbl {
+    font-size: 0.92em;
+    font-weight: 600;
   }
   .coords input {
     width: 180px;
@@ -311,6 +321,15 @@
   }
   .spacer {
     flex: 1;
+  }
+  .btn {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--fg);
+    text-decoration: none;
   }
   .danger {
     border-color: var(--c-down);

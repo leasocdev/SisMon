@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import IncidentList from '../components/IncidentList.svelte';
-  import SoundToggle from '../components/SoundToggle.svelte';
   import { get } from '../lib/api';
   import { live } from '../lib/live.svelte';
   import { fmtDateTime, fmtDuration, TZ } from '../lib/time';
@@ -42,12 +41,11 @@
     {#if live.identity.logo_version > 0}<img class="rlogo" src="/branding/logo?v={live.identity.logo_version}" alt="" />{/if}
     <h1>{live.identity.report_title}</h1>
     <div class="actions no-print">
-      <SoundToggle />
       <button type="button" onclick={() => window.print()}>Tipărește</button>
     </div>
   </div>
   <p class="muted">
-    {live.identity.name} · Ultimele 24 de ore: {report ? `${fmtDateTime(report.from)} – ${fmtDateTime(report.to)}` : '…'} · Ora: {TZ}
+    {live.identity.subtitle || live.identity.name} · Ultimele 24 de ore: {report ? `${fmtDateTime(report.from)} – ${fmtDateTime(report.to)}` : '…'} · Ora: {TZ}
   </p>
   {#if error}<p class="notice danger" role="alert">{error}</p>{/if}
   {#if live.stale}<p class="notice warn" role="alert">Date neactualizate: conexiunea cu serverul este întreruptă.</p>{/if}

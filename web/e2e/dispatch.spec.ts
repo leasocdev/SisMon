@@ -106,7 +106,12 @@ test.describe('temă', () => {
   test('dispeceratul este întunecat și la navigarea internă', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    await page.getByRole('navigation', { name: 'Navigare principală' }).getByRole('link', { name: 'Dispecerat' }).click();
+    await page.evaluate(() => {
+      const a = document.createElement('a');
+      a.href = '/dispecerat';
+      document.body.append(a);
+      a.click();
+    });
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   });
 });

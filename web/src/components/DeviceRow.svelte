@@ -9,7 +9,6 @@
     count,
     errors,
     defaults,
-    kinds,
     onMove,
     onRemove,
     onDragStart,
@@ -20,12 +19,13 @@
     count: number;
     errors: Record<string, string>;
     defaults: Settings | null;
-    kinds: string[];
     onMove: (to: number) => void;
     onRemove: () => void;
     onDragStart: () => void;
     onDrop: () => void;
   } = $props();
+
+  const KINDS = ['PC', 'Router', 'Receptor', 'Server', 'Altele'];
 
   let testing = $state(false);
   let result = $state<{ ok: boolean; text: string } | null>(null);
@@ -71,7 +71,10 @@
     </div>
     <div class="field">
       <label for={id('kind')}>Tip <span class="sr-only">{n}</span></label>
-      <input id={id('kind')} list="device-kinds" bind:value={device.kind} placeholder="Altele" aria-invalid={!!errors.kind} />
+      <select id={id('kind')} value={device.kind || 'Altele'} onchange={(e) => (device.kind = e.currentTarget.value)} aria-invalid={!!errors.kind}>
+        {#each KINDS as k (k)}<option value={k}>{k}</option>{/each}
+        {#if device.kind && !KINDS.includes(device.kind)}<option value={device.kind}>{device.kind}</option>{/if}
+      </select>
       {#if errors.kind}<p class="error-text">{errors.kind}</p>{/if}
     </div>
     <label class="primary-box"><input type="checkbox" bind:checked={device.is_primary} /> ★ Primar <span class="sr-only">{n}</span></label>
@@ -109,11 +112,6 @@
     </div>
   {/if}
   {#if errors.stale_s || errors.id}<p class="error-text">{errors.stale_s || errors.id}</p>{/if}
-  {#if index === 0}
-    <datalist id="device-kinds">
-      {#each kinds as k (k)}<option value={k}></option>{/each}
-    </datalist>
-  {/if}
 </div>
 
 <style>
@@ -143,6 +141,9 @@
   }
   .fields .field {
     margin: 0;
+  }
+  .fields select {
+    width: 100%;
   }
   .primary-box {
     display: flex;

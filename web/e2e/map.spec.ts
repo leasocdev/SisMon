@@ -34,16 +34,30 @@ test.describe('Hartă', () => {
     }
   });
 
-  test('locațiile fără coordonate sunt listate', async ({ page }) => {
+  test('locațiile fără coordonate nu sunt listate', async ({ page }) => {
     const api = await adminApi();
     const id = await createLocation(api, { name: 'Fără GPS', devices: [{ name: 'R', host: '10.0.8.2' }] });
     try {
       await page.goto('/harta');
-      await expect(page.locator('.no-coords')).toContainText('Fără GPS');
+      await expect(page.locator('.leaflet-container')).toBeVisible();
+      await expect(page.locator('.no-coords')).toHaveCount(0);
     } finally {
       await api.send('DELETE', `/api/admin/locations/${id}`);
       await api.dispose();
     }
+  });
+
+  test('butoanele Centrează și Ecran complet, harta pe toată fereastra', async ({ page }) => {
+    await page.goto('/harta');
+    await expect(page.getByRole('button', { name: /Centrează/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Ecran complet/ })).toBeVisible();
+    await page.getByRole('button', { name: /Centrează/ }).click();
+    const box = await page.locator('.leaflet-container').boundingBox();
+    const vp = page.viewportSize()!;
+    expect(box!.x).toBe(0);
+    expect(Math.round(box!.x + box!.width)).toBe(vp.width);
+    expect(Math.round(box!.y + box!.height)).toBe(vp.height);
+    await expect(page.locator('.nw-label[class*="pos-"]').first()).toBeVisible();
   });
 
   test.describe('rezervă', () => {

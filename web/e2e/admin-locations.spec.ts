@@ -55,13 +55,13 @@ test.describe('Administrare — locații', () => {
     await page.locator('.loc-list').getByRole('link', { name: 'Cahul' }).click();
     await page.getByLabel('Denumire', { exact: true }).fill('Cahul modificat');
     const url = page.url();
-    await page.getByRole('navigation', { name: 'Navigare principală' }).getByRole('link', { name: 'Monitorizare' }).click();
+    await page.locator('header a.brand').click();
     const dlg = page.getByRole('alertdialog');
     await expect(dlg).toContainText('Aveți modificări nesalvate. Le abandonați?');
     await dlg.getByRole('button', { name: 'Rămân' }).click();
     expect(page.url()).toBe(url);
     await expect(page.getByLabel('Denumire', { exact: true })).toHaveValue('Cahul modificat');
-    await page.getByRole('navigation', { name: 'Navigare principală' }).getByRole('link', { name: 'Monitorizare' }).click();
+    await page.locator('header a.brand').click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Abandonează' }).click();
     await expect(page).toHaveURL(/\/$/);
   });

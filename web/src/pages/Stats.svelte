@@ -166,20 +166,6 @@
       <div class="kpi card kpi-mttr"><span class="l">MTTR</span><span class="v">{report.summary.mttr_s == null ? '—' : fmtDuration(report.summary.mttr_s)}</span></div>
     </section>
 
-    <h2>Echipamente</h2>
-    <SortableTable rows={report.devices} {columns} rowKey={(r) => r.id} cls="devices">
-      {#snippet cell(r, c)}
-        {#if c.key === 'availability'}{fmtPct(r.availability)}
-        {:else if c.key === 'coverage'}{fmtPct(r.coverage)}
-        {:else if c.key === 'latency'}{fmtLatency(r.latency_ms)}
-        {:else if c.key === 'loss'}{fmtLoss(r.loss_pct)}
-        {:else if c.key === 'mttr'}{r.mttr_s == null ? '—' : fmtDuration(r.mttr_s)}
-        {:else if c.key === 'primary'}{r.is_primary ? '★' : ''}
-        {:else if c.key === 'name'}{r.name}{r.archived ? ' (arhivat)' : ''}
-        {:else}{c.value(r) ?? '—'}{/if}
-      {/snippet}
-    </SortableTable>
-
     <h2>Locații</h2>
     <table class="locs">
       <thead><tr><th scope="col">Locație</th><th scope="col">Disponibilitate</th><th scope="col">Acoperire</th><th scope="col">Stări în perioadă</th></tr></thead>
@@ -196,6 +182,20 @@
         {/each}
       </tbody>
     </table>
+
+    <h2>Echipamente</h2>
+    <SortableTable rows={report.devices} {columns} rowKey={(r) => r.id} cls="devices">
+      {#snippet cell(r, c)}
+        {#if c.key === 'availability'}{fmtPct(r.availability)}
+        {:else if c.key === 'coverage'}{fmtPct(r.coverage)}
+        {:else if c.key === 'latency'}{fmtLatency(r.latency_ms)}
+        {:else if c.key === 'loss'}{fmtLoss(r.loss_pct)}
+        {:else if c.key === 'mttr'}{r.mttr_s == null ? '—' : fmtDuration(r.mttr_s)}
+        {:else if c.key === 'primary'}{r.is_primary ? '★' : ''}
+        {:else if c.key === 'name'}{r.name}{r.archived ? ' (arhivat)' : ''}
+        {:else}{c.value(r) ?? '—'}{/if}
+      {/snippet}
+    </SortableTable>
 
     <h2>Incidente</h2>
     <IncidentList incidents={report.incidents} />

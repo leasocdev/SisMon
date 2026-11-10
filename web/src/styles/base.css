@@ -145,8 +145,8 @@ th {
 
 /* status text and fills */
 .t-up { color: var(--c-up); }
-.t-down { color: var(--c-down); }
-.t-degraded { color: var(--c-degraded); }
+.t-down { color: var(--c-down-text); }
+.t-degraded { color: var(--c-degraded-text); }
 .t-unknown { color: var(--c-unknown); }
 .t-error { color: var(--c-error); }
 .f-up { background: var(--c-up); color: var(--on-up); }

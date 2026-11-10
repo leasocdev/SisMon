@@ -26,7 +26,7 @@ Deschideți `http://SERVER:8501/` în browser. Pagini:
 | Pagină | Rol |
 |---|---|
 | `/` Monitorizare | carduri pe locații, filtre pe stări, căutare, panou de detalii (`/locatie/{id}`) |
-| `/dispecerat` | ecran mare, fără meniu; `?rotatie=60` alternează grila cu harta, `?sunet=1` pornește sunetul, `?tema=luminoasa` |
+| `/dispecerat` | ecran mare, fără meniu; `?rotatie=60` alternează grila cu harta, `?tema=luminoasa` |
 | `/harta` | hartă OpenStreetMap (prin proxy-ul serverului, cu cache); contururi locale când OSM nu răspunde |
 | `/statistici` | disponibilitate, acoperire, incidente, MTTR, pe orice perioadă de până la 400 de zile |
 | `/raport-24h` | situația curentă și întreruperile ultimelor 24 h, pregătit pentru tipărire A4 |

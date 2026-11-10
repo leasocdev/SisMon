@@ -1,18 +1,15 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import ConnectionBadge from '../components/ConnectionBadge.svelte';
-  import SoundToggle from '../components/SoundToggle.svelte';
   import LoadFailed from '../components/LoadFailed.svelte';
   import DemoBanner from '../components/DemoBanner.svelte';
   import { computeGrid } from '../lib/grid';
   import { live } from '../lib/live.svelte';
   import { router } from '../lib/router.svelte';
-  import { beeper, soundPrefs } from '../lib/sound.svelte';
   import { errorText, severity, sortLocations, STATE_LABEL, STATE_SYMBOL } from '../lib/status';
   import { fmtDate, fmtSince, fmtTime } from '../lib/time';
   import type { LocationView } from '../lib/types';
 
-  const sound = router.route.query.sunet === '1';
   const rotateS = Math.max(10, Number(router.route.query.rotatie) || 0);
   const rotate = Number(router.route.query.rotatie) > 0;
   let showMap = $state(false);
@@ -76,10 +73,6 @@
   }
 
   onMount(() => {
-    if (sound) {
-      soundPrefs.on = true;
-      beeper.unlock();
-    }
     const ro = new ResizeObserver(() => gridEl && (size = { w: gridEl.clientWidth, h: gridEl.clientHeight }));
     ro.observe(gridEl);
     const rot = rotate ? setInterval(() => (showMap = !showMap), rotateS * 1000) : null;
@@ -116,7 +109,6 @@
       {/if}
     </div>
     <div class="right">
-      {#if sound}<SoundToggle compact />{/if}
       <ConnectionBadge large />
       <span class="clock" aria-label="Ora curentă (Europe/Chisinau)">{fmtTime(now, true)}</span>
       <button type="button" class="fs" onclick={fullscreen} aria-label="Ecran complet">⛶</button>

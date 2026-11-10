@@ -27,13 +27,20 @@
 <style>
   .mini-timeline {
     position: relative;
-    height: 8px;
+    height: 12px;
     border-radius: 3px;
-    background: var(--surface-2);
+    background: repeating-linear-gradient(135deg, var(--track) 0 4px, transparent 4px 8px), var(--surface);
+    border: 1px solid var(--muted);
     overflow: hidden;
   }
   .tall {
-    height: 18px;
+    height: 22px;
+  }
+  .seg.f-unknown {
+    background: repeating-linear-gradient(135deg, var(--c-unknown) 0 3px, var(--surface) 3px 6px);
+  }
+  .seg {
+    box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
   }
   .seg {
     position: absolute;
