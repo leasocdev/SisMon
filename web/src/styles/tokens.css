@@ -1,0 +1,59 @@
+/* Design tokens. Status colors meet WCAG AA as text on --surface/--bg and
+   against their --on-* text color when used as a fill. */
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eceef1;
+  --fg: #1a1d21;
+  --muted: #545c66;
+  --border: #c9ced5;
+  --focus: #0b57d0;
+  --link: #0b57d0;
+  --c-up: #1d7536;
+  --c-down: #b3261e;
+  --c-degraded: #9a4d00;
+  --c-unknown: #5a626c;
+  --c-error: #7a3d9e;
+  --on-up: #ffffff;
+  --on-down: #ffffff;
+  --on-degraded: #ffffff;
+  --on-unknown: #ffffff;
+  --on-error: #ffffff;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  --danger-bg: #fbe9e7;
+  --warn-bg: #fff3e0;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0e1115;
+  --surface: #171b21;
+  --surface-2: #20252d;
+  --fg: #e6e8eb;
+  --muted: #a1a9b3;
+  --border: #353c46;
+  --focus: #8ab4f8;
+  --link: #8ab4f8;
+  --c-up: #4cc672;
+  --c-down: #ff6b61;
+  --c-degraded: #ffa94d;
+  --c-unknown: #a1a9b3;
+  --c-error: #cf9df0;
+  --on-up: #0e1115;
+  --on-down: #0e1115;
+  --on-degraded: #0e1115;
+  --on-unknown: #0e1115;
+  --on-error: #0e1115;
+  --shadow: none;
+  --danger-bg: #3a1714;
+  --warn-bg: #3a2810;
+}
+
+:root {
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Liberation Sans', Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+  --radius: 6px;
+  --gap: 12px;
+}
