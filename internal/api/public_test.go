@@ -311,3 +311,12 @@ func TestLocationTimelineNotFound(t *testing.T) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 }
+
+func TestTilesRouteDelegates(t *testing.T) {
+	s := newServer(t)
+	s.d.Tiles = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte("tile:" + r.URL.Path)) })
+	s.h = build(s.d, nil)
+	if w := s.do("GET", "/tiles/2/1/1.png", nil, nil); w.Code != 200 || w.Body.String() != "tile:/tiles/2/1/1.png" {
+		t.Fatal(w.Code, w.Body.String())
+	}
+}

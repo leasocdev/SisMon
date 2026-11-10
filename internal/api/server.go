@@ -42,9 +42,11 @@ type Deps struct {
 	Limiter  *auth.Limiter
 	Proxy    auth.Proxy
 	Web      fs.FS // nil until the web UI is embedded (Plan 2)
-	Version  string
-	Now      func() time.Time
-	DataDir  string
+	// Tiles serves /tiles/{z}/{x}/{y}.png (OSM proxy); nil disables it.
+	Tiles   http.Handler
+	Version string
+	Now     func() time.Time
+	DataDir string
 	// SSEPing overrides the SSE keep-alive period (tests).
 	SSEPing time.Duration
 	// Sleep applies the login failure delay; nil means a real, ctx-aware sleep.
@@ -93,6 +95,9 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	mux.HandleFunc("GET /api/timelines", p.timelines)
 	mux.HandleFunc("GET /api/locations/{id}/timeline", p.locationTimeline)
 	mux.HandleFunc("GET /api/events", p.events)
+	if d.Tiles != nil {
+		mux.Handle("GET /tiles/", d.Tiles)
+	}
 	registerAdmin(mux, d)
 	if extra != nil {
 		extra(mux, d)

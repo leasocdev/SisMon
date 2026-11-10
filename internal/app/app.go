@@ -25,6 +25,7 @@ import (
 	"netwatch/internal/monitor/icmp"
 	"netwatch/internal/settings"
 	"netwatch/internal/store"
+	"netwatch/internal/tiles"
 	"netwatch/internal/tlsutil"
 	"netwatch/internal/version"
 	"netwatch/internal/webui"
@@ -40,6 +41,8 @@ type Options struct {
 	FlushEvery    time.Duration
 	// Wrap, if set, wraps the final HTTP handler (end-to-end test harness).
 	Wrap func(http.Handler) http.Handler
+	// TilesUpstream overrides the OSM tile server (end-to-end tests).
+	TilesUpstream string
 }
 
 func defaultLookup(ctx context.Context, host string) ([]netip.Addr, error) {
@@ -98,11 +101,18 @@ func Run(ctx context.Context, cfg config.Config, opt Options) error {
 	sessions := auth.NewSessions(st)
 	runner := jobs.NewRunner(st, set, backups, sessions, svc.SetBackupStatus)
 
+	tp, err := tiles.New(filepath.Join(cfg.DataDir, "tiles"), version.Version)
+	if err != nil {
+		return err
+	}
+	if opt.TilesUpstream != "" {
+		tp.Upstream = opt.TilesUpstream
+	}
 	if opt.Web == nil {
 		opt.Web = webui.FS()
 	}
 	handler := api.New(api.Deps{Store: st, Hub: hub, Settings: set, Monitor: svc, Backups: backups, Sessions: sessions,
-		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Version: version.Version, DataDir: cfg.DataDir})
+		Limiter: auth.NewLimiter(5, 5*time.Minute, 10000), Proxy: proxy, Web: opt.Web, Tiles: tp, Version: version.Version, DataDir: cfg.DataDir})
 	if opt.Wrap != nil {
 		handler = opt.Wrap(handler)
 	}
