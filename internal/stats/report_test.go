@@ -271,6 +271,9 @@ func TestReport24Current(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if r.Current[0].DeviceID != 1 {
+		t.Fatalf("device id missing: %+v", r.Current[0])
+	}
 	if r.AffectedNow != 1 || len(r.Current) != 1 || r.Current[0].Since != (now-600)*1000 || r.Locations != 1 || len(r.Incidents) != 1 {
 		t.Fatalf("%+v", r)
 	}

@@ -4,6 +4,7 @@
   import ConfirmHost from './components/ConfirmHost.svelte';
   import ConnectionBadge from './components/ConnectionBadge.svelte';
   import Header from './components/Header.svelte';
+  import LoadFailed from './components/LoadFailed.svelte';
   import Monitor from './pages/Monitor.svelte';
   import Dispatch from './pages/Dispatch.svelte';
   import Report24 from './pages/Report24.svelte';
@@ -11,7 +12,7 @@
   import LocationPanel from './pages/LocationPanel.svelte';
   import { live } from './lib/live.svelte';
   import { router } from './lib/router.svelte';
-  import { beeper, soundFor, soundPrefs } from './lib/sound.svelte';
+  import { beeper, soundAllowed, soundFor, soundPrefs } from './lib/sound.svelte';
   import { applyTheme, initialTheme, saveTheme, storedTheme, type Theme } from './lib/theme';
 
   const prefersDark = typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
@@ -25,12 +26,10 @@
     saveTheme(t);
   }
 
-  const SOUND_ROUTES = ['monitor', 'location', 'dispatch', 'report'];
-
   onMount(() => {
     live.start();
     const off = live.onChange((prev, next) => {
-      if (!SOUND_ROUTES.includes(router.route.name)) return;
+      if (!soundAllowed(router.route.name)) return;
       const kind = soundFor(prev?.state, next?.state, soundPrefs);
       if (kind) beeper.play(kind);
     });
@@ -82,9 +81,9 @@
       {/snippet}
     </Monitor>
   {:else if router.route.name === 'map'}
-    {#await import('./pages/MapPage.svelte') then m}<m.default />{/await}
+    {#await import('./pages/MapPage.svelte') then m}<m.default />{:catch}<LoadFailed />{/await}
   {:else if router.route.name === 'stats'}
-    {#await import('./pages/Stats.svelte') then m}<m.default />{/await}
+    {#await import('./pages/Stats.svelte') then m}<m.default />{:catch}<LoadFailed />{/await}
   {:else if router.route.name === 'report'}
     <Report24 />
   {:else if router.route.name === 'admin' || router.route.name === 'adminLocation' || router.route.name === 'adminPage'}

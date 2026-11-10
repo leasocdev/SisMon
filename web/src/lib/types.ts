@@ -149,7 +149,7 @@ export interface Report24 {
   to: number;
   locations: number;
   affected_now: number;
-  current: { location_id: number; location: string; device: string; since: number }[];
+  current: { location_id: number; location: string; device_id: number; device: string; since: number }[];
   incidents: IncidentRow[];
 }
 

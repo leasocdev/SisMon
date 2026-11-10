@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { soundFor } from './sound.svelte';
+import { soundAllowed, soundFor } from './sound.svelte';
 
 const on = { on: true, degraded: false };
 
@@ -23,5 +23,12 @@ describe('soundFor', () => {
   });
   it('silent when off', () => {
     expect(soundFor('up', 'down', { on: false, degraded: true })).toBeNull();
+  });
+});
+
+describe('soundAllowed', () => {
+  it('plays everywhere except administration', () => {
+    for (const r of ['monitor', 'location', 'dispatch', 'report', 'map', 'stats']) expect(soundAllowed(r)).toBe(true);
+    for (const r of ['admin', 'adminLocation', 'adminPage']) expect(soundAllowed(r)).toBe(false);
   });
 });

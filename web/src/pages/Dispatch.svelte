@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import ConnectionBadge from '../components/ConnectionBadge.svelte';
   import SoundToggle from '../components/SoundToggle.svelte';
+  import LoadFailed from '../components/LoadFailed.svelte';
   import { computeGrid } from '../lib/grid';
   import { live } from '../lib/live.svelte';
   import { router } from '../lib/router.svelte';
@@ -85,7 +86,7 @@
   {/if}
   {#if rotate}
     <div class="mapbox" class:hidden={!showMap}>
-      {#await import('../components/MapView.svelte') then m}<m.default />{/await}
+      {#await import('../components/MapView.svelte') then m}<m.default />{:catch}<LoadFailed />{/await}
     </div>
   {/if}
   <div class="grid" class:hidden={showMap} bind:this={gridEl} style:--cols={grid.cols} style:--rows={grid.rows} style:--font="{grid.fontPx}px">

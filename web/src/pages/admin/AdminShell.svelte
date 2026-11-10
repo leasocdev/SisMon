@@ -2,6 +2,7 @@
   import { untrack, type Component } from 'svelte';
   import { router } from '../../lib/router.svelte';
   import { session } from '../../lib/session.svelte';
+  import LoadFailed from '../../components/LoadFailed.svelte';
   import Login from './Login.svelte';
   import Setup from './Setup.svelte';
 
@@ -89,7 +90,7 @@
         {:then m}
           <m.default />
         {:catch}
-          <p class="notice danger">Pagina nu a putut fi încărcată.</p>
+          <LoadFailed />
         {/await}
       {/key}
     </section>

@@ -214,3 +214,16 @@ func TestSSEMalformedLastIDSendsSnapshot(t *testing.T) {
 		t.Fatalf("%+v", m)
 	}
 }
+
+func TestSSEResumeBeyondReplayLimitSendsSnapshot(t *testing.T) {
+	s := newServer(t)
+	srv := httptest.NewServer(s.h)
+	t.Cleanup(srv.Close)
+	first := s.d.Hub.Snapshot().Seq
+	for i := 0; i < live.ReplayLimit+20; i++ {
+		s.d.Hub.SetHealth(live.Health{AvgCheckMs: float64(i)})
+	}
+	if m := openSSE(t, srv.URL, sseID(s.d.Hub, first)).next(t); m.event != "snapshot" {
+		t.Fatalf("a resume that cannot be replayed fully must get a snapshot: %+v", m)
+	}
+}

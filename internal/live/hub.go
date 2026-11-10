@@ -17,6 +17,10 @@ const (
 	bufferSize  = 256
 )
 
+// ReplayLimit is the most events a resumed subscriber can be replayed; a
+// resume further behind must start from a snapshot.
+const ReplayLimit = bufferSize
+
 // Hub holds the live state and publishes changes.
 type Hub struct {
 	epoch   int64

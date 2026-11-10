@@ -55,6 +55,8 @@ export interface LiveDeps {
   EventSource: new (url: string) => ESLike;
   fetch: typeof fetch;
   now: () => number;
+  /** Reloads the page (after a server upgrade, to fetch the new UI). */
+  reload: () => void;
 }
 
 type ChangeFn = (prev: LocationView | undefined, next: LocationView | undefined) => void;
@@ -95,6 +97,7 @@ export class LiveStore {
       EventSource: deps?.EventSource ?? (globalThis.EventSource as unknown as LiveDeps['EventSource']),
       fetch: deps?.fetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a)),
       now: deps?.now ?? (() => Date.now()),
+      reload: deps?.reload ?? (() => location.reload()),
     };
   }
 
@@ -126,13 +129,7 @@ export class LiveStore {
       this.stale = this.deps.now() - this.lastMessageAt > STALE_MS;
     }, 1000);
     try {
-      const res = await this.deps.fetch('/api/state', { credentials: 'same-origin' });
-      if (!res.ok) throw new Error(String(res.status));
-      const s = (await res.json()) as StateResponse;
-      this.identity = s.identity;
-      this.intervalS = s.interval_s;
-      this.version = s.version;
-      this.clockOffset = s.now - this.deps.now();
+      const s = await this.fetchState();
       this.startedAt = s.now;
       this.health = s.health;
       this.set({ locations: s.locations, epoch: s.epoch, lastId: `${s.epoch}-${s.seq}` }, false);
@@ -152,6 +149,21 @@ export class LiveStore {
     if (this.timer) clearInterval(this.timer);
     if (this.retry) clearTimeout(this.retry);
     this.timer = this.retry = null;
+  }
+
+  /** Identity, interval and version; reloads the page when the server version changed. */
+  private async fetchState(): Promise<StateResponse> {
+    const res = await this.deps.fetch('/api/state', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error(String(res.status));
+    const s = (await res.json()) as StateResponse;
+    if (this.version && s.version !== this.version) {
+      this.deps.reload();
+    }
+    this.identity = s.identity;
+    this.intervalS = s.interval_s;
+    this.version = s.version;
+    this.clockOffset = s.now - this.deps.now();
+    return s;
   }
 
   private set(next: LiveData, notify: boolean): void {
@@ -199,12 +211,16 @@ export class LiveStore {
         this.lastId = e.lastEventId || this.lastId;
         return;
       }
+      let notify = true;
       if (type === 'snapshot') {
-        this.health = (data as Snapshot).health;
+        const snap = data as Snapshot;
+        this.health = snap.health;
+        notify = this.loaded; // nothing shown yet: no alarms for the initial picture
+        if (this.epoch && snap.epoch !== this.epoch) this.fetchState().catch(() => {}); // server restarted
         this.loaded = true;
         this.loadError = '';
       }
-      this.set(applyEvent({ locations: this.locations, epoch: this.epoch, lastId: this.lastId }, type, data, e.lastEventId), true);
+      this.set(applyEvent({ locations: this.locations, epoch: this.epoch, lastId: this.lastId }, type, data, e.lastEventId), notify);
     };
     for (const t of ['snapshot', 'state', 'removed', 'health', 'ping']) es.addEventListener(t, handle(t));
     es.onopen = () => {

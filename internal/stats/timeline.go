@@ -86,6 +86,7 @@ type Report24 struct {
 type CurrentDown struct {
 	LocationID int64  `json:"location_id"`
 	Location   string `json:"location"`
+	DeviceID   int64  `json:"device_id"`
 	Device     string `json:"device"`
 	Since      int64  `json:"since"`
 }
@@ -109,7 +110,7 @@ func BuildReport24(ctx context.Context, st *store.Store, snap live.Snapshot, now
 			if err := st.DB.QueryRowContext(ctx, `SELECT observed_at FROM incidents WHERE device_id=? AND ended_at IS NULL`, d.ID).Scan(&obs); err == nil && obs.Valid {
 				since = obs.Int64
 			}
-			out.Current = append(out.Current, CurrentDown{LocationID: l.ID, Location: l.Name, Device: d.Name, Since: since})
+			out.Current = append(out.Current, CurrentDown{LocationID: l.ID, Location: l.Name, DeviceID: d.ID, Device: d.Name, Since: since})
 			affected[l.ID] = true
 		}
 	}

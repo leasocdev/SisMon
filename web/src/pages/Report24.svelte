@@ -64,7 +64,7 @@
         <tr><th scope="col">Locație</th><th scope="col">Echipament primar</th><th scope="col">Indisponibil de la</th><th scope="col">Durată</th></tr>
       </thead>
       <tbody>
-        {#each report.current as c (c.location_id + c.device)}
+        {#each report.current as c (c.device_id)}
           <tr>
             <td><a href="/locatie/{c.location_id}">{c.location}</a></td>
             <td>{c.device}</td>

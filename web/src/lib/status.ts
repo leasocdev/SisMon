@@ -72,7 +72,7 @@ const pctFmt = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 2, maximu
 const msFmt = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export function fmtPct(v: number | null | undefined): string {
-  return v == null ? '—' : pctFmt.format(Math.floor(v * 100) / 100) + '%';
+  return v == null ? '—' : pctFmt.format(Math.floor(v * 100 + 1e-9) / 100) + '%';
 }
 
 export function fmtLatency(v: number | null | undefined): string {

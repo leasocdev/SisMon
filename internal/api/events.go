@@ -65,7 +65,7 @@ func (p *public) events(w http.ResponseWriter, r *http.Request) {
 	last, okID := parseEventID(lastRaw, epoch)
 	var ch <-chan live.Event
 	var cancel func()
-	if _, ok := hub.Since(last); okID && ok {
+	if past, ok := hub.Since(last); okID && ok && len(past) < live.ReplayLimit {
 		ch, cancel = hub.Subscribe(last)
 		w.WriteHeader(http.StatusOK)
 	} else {

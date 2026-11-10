@@ -67,6 +67,15 @@ test.describe('Dispecerat', () => {
     await expect(page.locator('.tile').first()).toBeVisible();
   });
 
+  test('click pe o placă, apoi Esc: revine la dispecerat cu aceleași opțiuni', async ({ page }) => {
+    await page.goto('/dispecerat?rotatie=60&tema=luminoasa');
+    await page.locator('.tile', { hasText: 'Cahul' }).click();
+    await expect(page.getByRole('dialog', { name: 'Cahul' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/dispecerat\?rotatie=60&tema=luminoasa$/);
+    await expect(page.locator('.tile').first()).toBeVisible();
+  });
+
   test('fără meniu, cu ceas', async ({ page }) => {
     await page.goto('/dispecerat');
     await expect(page.getByRole('navigation', { name: 'Navigare principală' })).toHaveCount(0);

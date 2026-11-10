@@ -16,5 +16,6 @@ export function loadLeaflet(): Promise<typeof Leaflet> {
     ]);
     return L;
   })();
+  loading.catch(() => (loading = null)); // allow a retry after a failed download
   return loading;
 }

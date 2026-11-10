@@ -76,14 +76,27 @@ export async function navigate(url: string, opts: { replace?: boolean; force?: b
   const next = match(url);
   const samePage = next.path === router.route.path;
   if (!opts.force && !samePage && !(await allowed())) return false;
-  if (opts.replace) history.replaceState(null, '', url);
-  else history.pushState(null, '', url);
+  const idx = historyIndex();
+  if (opts.replace) history.replaceState({ nwIdx: idx }, '', url);
+  else history.pushState({ nwIdx: idx + 1 }, '', url);
   router.route = next;
   return true;
 }
 
+/** Position of the current entry in this app's history (0 = the page the tab opened on). */
+function historyIndex(): number {
+  const s = history.state as { nwIdx?: number } | null;
+  return typeof s?.nwIdx === 'number' ? s.nwIdx : 0;
+}
+
+/** True when the previous history entry belongs to this app, so history.back() stays in it. */
+export function canGoBack(): boolean {
+  return historyIndex() > 0;
+}
+
 /** Installs link interception and back/forward handling (call once). */
 export function startRouter(): void {
+  if (typeof history.state?.nwIdx !== 'number') history.replaceState({ nwIdx: 0 }, '');
   document.addEventListener('click', (ev) => {
     if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
     const a = (ev.target as Element | null)?.closest('a');
@@ -102,7 +115,7 @@ export function startRouter(): void {
     const next = match(current());
     if (next.path !== router.route.path && !(await allowed())) {
       restoring = true;
-      history.pushState(null, '', router.route.path + toSearch(router.route.query));
+      history.pushState({ nwIdx: historyIndex() + 1 }, '', router.route.path + toSearch(router.route.query));
       return;
     }
     router.route = next;

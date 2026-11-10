@@ -25,3 +25,13 @@ test.describe('fixture', () => {
     await page.waitForTimeout(200);
   });
 });
+
+test.describe('încărcare eșuată', () => {
+  test.use({ allowConsole: [/Failed to fetch dynamically imported module|Importing a module script failed|net::ERR_FAILED/] });
+  test('o pagină care nu se poate încărca afișează un mesaj', async ({ page }) => {
+    await page.goto('/');
+    await page.route(/\/assets\/(MapPage|Stats)-.*\.js$/, (r) => r.abort());
+    await page.getByRole('link', { name: 'Statistici' }).click();
+    await expect(page.getByText('Pagina nu a putut fi încărcată')).toBeVisible();
+  });
+});

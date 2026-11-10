@@ -6,7 +6,7 @@
   import StatusBadge from '../components/StatusBadge.svelte';
   import { get } from '../lib/api';
   import { live } from '../lib/live.svelte';
-  import { navigate } from '../lib/router.svelte';
+  import { canGoBack, navigate } from '../lib/router.svelte';
   import { errorText, fmtLatency, fmtLoss, pendingText, STATE_SYMBOL } from '../lib/status';
   import { fmtDateTime, fmtSince } from '../lib/time';
   import type { IncidentRow, Point, Report, Segment } from '../lib/types';
@@ -79,6 +79,13 @@
   }
 
   async function close() {
+    const focusCard = () => (document.querySelector(`.loc-card[data-id="${id}"]`) as HTMLElement | null)?.focus();
+    if (canGoBack()) {
+      // back to where the panel was opened from (e.g. the dispatch screen with its options)
+      window.addEventListener('popstate', () => setTimeout(focusCard, 0), { once: true });
+      history.back();
+      return;
+    }
     if (await navigate('/')) {
       await tick();
       (document.querySelector(`.loc-card[data-id="${id}"]`) as HTMLElement | null)?.focus();

@@ -95,6 +95,7 @@ describe('LiveStore', () => {
       EventSource: FakeES as unknown as LiveDeps['EventSource'],
       fetch: vi.fn(async () => new Response(JSON.stringify(state), { headers: { 'Content-Type': 'application/json' } })) as unknown as typeof fetch,
       now: () => localNow,
+      reload: () => {},
     };
   }
   beforeEach(() => {
@@ -155,6 +156,51 @@ describe('LiveStore', () => {
     es.emit('state', loc(1, 'down'), '10-6');
     es.emit('snapshot', { epoch: 10, seq: 7, locations: [loc(1, 'down'), loc(3, 'up')], health }, '10-7');
     expect(seen).toEqual(['1:up>down', '2:up>-', '-:->up']);
+    s.stop();
+  });
+});
+
+describe('LiveStore after a server restart', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    FakeES.instances = [];
+  });
+  afterEach(() => vi.useRealTimers());
+
+  function mk(version: string, name: string, epoch: number): StateResponse {
+    return {
+      epoch, seq: 1, locations: [loc(1)], health,
+      identity: { name, subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version, now: 1000,
+    };
+  }
+
+  it('refetches /api/state on a new epoch and reloads when the version changed', async () => {
+    const responses = [mk('1.0', 'A', 10), mk('1.0', 'B', 20), mk('1.1', 'B', 30)];
+    const fetchFn = vi.fn(async () => new Response(JSON.stringify(responses.shift()), { headers: { 'Content-Type': 'application/json' } }));
+    const reload = vi.fn();
+    const s = new LiveStore({ EventSource: FakeES as unknown as LiveDeps['EventSource'], fetch: fetchFn as unknown as typeof fetch, now: () => 1000, reload });
+    await s.start();
+    const es = FakeES.instances[0];
+    es.emit('snapshot', { epoch: 20, seq: 1, locations: [loc(1)], health }, '20-1');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(s.identity.name).toBe('B');
+    expect(reload).not.toHaveBeenCalled();
+    es.emit('snapshot', { epoch: 30, seq: 1, locations: [loc(1)], health }, '30-1');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(reload).toHaveBeenCalledTimes(1);
+    s.stop();
+  });
+
+  it('first snapshot after a failed initial load does not notify', async () => {
+    const fetchFn = vi.fn(async () => new Response('x', { status: 502 }));
+    const s = new LiveStore({ EventSource: FakeES as unknown as LiveDeps['EventSource'], fetch: fetchFn as unknown as typeof fetch, now: () => 1000 });
+    const seen: number[] = [];
+    s.onChange((_p, n) => n && seen.push(n.id));
+    await s.start();
+    FakeES.instances[0].emit('snapshot', { epoch: 5, seq: 1, locations: [loc(1, 'down'), loc(2, 'down')], health }, '5-1');
+    expect(seen).toEqual([]);
+    expect(s.locations).toHaveLength(2);
     s.stop();
   });
 });

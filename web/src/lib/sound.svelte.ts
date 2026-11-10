@@ -102,3 +102,8 @@ export class Beeper {
 /** Shared preferences and player for every page that shows the sound toggle. */
 export const soundPrefs = $state<SoundPrefs>(loadPrefs());
 export const beeper = new Beeper();
+
+/** Alerts play on every page except administration. */
+export function soundAllowed(routeName: string): boolean {
+  return !routeName.startsWith('admin');
+}

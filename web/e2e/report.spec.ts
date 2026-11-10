@@ -1,4 +1,4 @@
-import { expect, setHost, test, waitState } from './fixtures';
+import { adminApi, createLocation, expect, setHost, test, waitState } from './fixtures';
 
 test.describe('Raport 24H', () => {
   test('situația curentă se actualizează live', async ({ page }) => {
@@ -33,4 +33,21 @@ test.describe('Raport 24H', () => {
     await expect(page.getByRole('button', { name: 'Tipărește' })).toBeHidden();
     await expect(page.locator('table.current')).toBeVisible();
   });
+});
+
+test('două echipamente primare cu același nume, ambele căzute', async ({ page }) => {
+  const api = await adminApi();
+  const id = await createLocation(api, {
+    name: 'Dublură E2E',
+    devices: [{ name: 'Router', host: '10.0.9.1', is_primary: true }, { name: 'Router', host: '10.0.9.2', is_primary: true }],
+  });
+  try {
+    await setHost('10.0.9.1', 'timeout');
+    await setHost('10.0.9.2', 'timeout');
+    await page.goto('/raport-24h');
+    await expect(page.locator('table.current tr', { hasText: 'Dublură E2E' })).toHaveCount(2, { timeout: 25_000 });
+  } finally {
+    await api.send('DELETE', `/api/admin/locations/${id}`);
+    await api.dispose();
+  }
 });

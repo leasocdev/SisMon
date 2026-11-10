@@ -40,6 +40,10 @@ describe('status', () => {
   });
   it('numbers', () => {
     expect(fmtPct(99.954)).toBe('99,95%');
+    expect(fmtPct(0.29)).toBe('0,29%');
+    expect(fmtPct(1.13)).toBe('1,13%');
+    expect(fmtPct(4.35)).toBe('4,35%');
+    expect(fmtPct(100)).toBe('100,00%');
     expect(fmtPct(null)).toBe('—');
     expect(fmtLatency(12.34)).toBe('12,3 ms');
     expect(fmtLatency(null)).toBe('—');
