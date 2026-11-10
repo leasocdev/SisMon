@@ -28,6 +28,8 @@ func registerAdmin(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("POST /api/admin/login", a.login)
 	mux.HandleFunc("POST /api/admin/logout", a.guard(a.logout))
 	mux.HandleFunc("GET /api/admin/locations", a.guard(a.listLocations))
+	mux.HandleFunc("POST /api/admin/import/preview", a.guard(a.importPreview))
+	mux.HandleFunc("POST /api/admin/import/apply", a.guard(a.importApply))
 	mux.HandleFunc("POST /api/admin/locations", a.guard(a.createLocation))
 	mux.HandleFunc("PUT /api/admin/locations/order", a.guard(a.orderLocations))
 	mux.HandleFunc("PUT /api/admin/locations/{id}", a.guard(a.updateLocation))

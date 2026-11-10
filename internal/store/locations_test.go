@@ -202,3 +202,25 @@ func TestSetLocationOrder(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 }
+
+func TestSaveLocationsAtomic(t *testing.T) {
+	s := openTemp(t)
+	save(t, s, nil, input(t, "Existentă", "10.0.0.1"), now)
+	_, err := s.SaveLocations(context.Background(), []domain.LocationInput{input(t, "Nouă", "10.0.0.2"), input(t, "Existentă", "10.0.0.3")}, now)
+	if err == nil {
+		t.Fatal("duplicate name must fail")
+	}
+	locs, _ := s.ListLocations(context.Background(), false)
+	if len(locs) != 1 {
+		t.Fatalf("partial import committed: %d locations", len(locs))
+	}
+	res, err := s.SaveLocations(context.Background(), []domain.LocationInput{input(t, "A", "10.0.1.1", "10.0.1.2"), input(t, "B", "10.0.2.1")}, now)
+	if err != nil || len(res) != 2 {
+		t.Fatal(res, err)
+	}
+	var n int
+	s.DB.QueryRow(`SELECT COUNT(*) FROM audit WHERE action='import'`).Scan(&n)
+	if n != 1 {
+		t.Fatal("audit import", n)
+	}
+}

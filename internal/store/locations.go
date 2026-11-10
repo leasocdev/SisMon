@@ -192,9 +192,41 @@ func (s *Store) SaveLocation(ctx context.Context, id *int64, in domain.LocationI
 		return SaveResult{}, err
 	}
 	defer tx.Rollback()
+	res, err := s.saveLocationTx(ctx, tx, id, in, now)
+	if err != nil {
+		return res, err
+	}
+	return res, tx.Commit()
+}
+
+// SaveLocations creates several new locations in one transaction (import):
+// any error leaves the database unchanged. Each input must be normalized.
+func (s *Store) SaveLocations(ctx context.Context, ins []domain.LocationInput, now time.Time) ([]SaveResult, error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	out := make([]SaveResult, 0, len(ins))
+	devices := 0
+	for _, in := range ins {
+		res, err := s.saveLocationTx(ctx, tx, nil, in, now)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, res)
+		devices += len(in.Devices)
+	}
+	if err := s.Audit(ctx, tx, "import", "location", 0, map[string]int{"locations": len(ins), "devices": devices}, now); err != nil {
+		return nil, err
+	}
+	return out, tx.Commit()
+}
+
+func (s *Store) saveLocationTx(ctx context.Context, tx *sql.Tx, id *int64, in domain.LocationInput, now time.Time) (SaveResult, error) {
 	var res SaveResult
 	var clash int64
-	err = tx.QueryRowContext(ctx, `SELECT id FROM locations WHERE archived_at IS NULL AND name=? COLLATE NOCASE AND id<>?`, in.Name, derefID(id)).Scan(&clash)
+	err := tx.QueryRowContext(ctx, `SELECT id FROM locations WHERE archived_at IS NULL AND name=? COLLATE NOCASE AND id<>?`, in.Name, derefID(id)).Scan(&clash)
 	if err == nil {
 		return res, apperr.Conflict("name", "Există deja o locație cu această denumire.")
 	} else if !errors.Is(err, sql.ErrNoRows) {
@@ -301,7 +333,7 @@ func (s *Store) SaveLocation(ctx context.Context, id *int64, in domain.LocationI
 	if err := s.Audit(ctx, tx, "save_location", "location", res.LocationID, in, now); err != nil {
 		return res, err
 	}
-	return res, tx.Commit()
+	return res, nil
 }
 
 func derefID(id *int64) int64 {
