@@ -79,7 +79,8 @@ type Report24 struct {
 	Locations   int           `json:"locations"`
 	AffectedNow int           `json:"affected_now"`
 	Current     []CurrentDown `json:"current"`
-	Incidents   []IncidentRow `json:"incidents"`
+	Incidents   []IncidentRow `json:"incidents"`       // doar echipamente primare
+	Minor       []IncidentRow `json:"minor_incidents"` // echipamente secundare
 }
 
 // CurrentDown is a primary device that is down right now.
@@ -98,7 +99,18 @@ func BuildReport24(ctx context.Context, st *store.Store, snap live.Snapshot, now
 	if err != nil {
 		return Report24{}, err
 	}
-	out := Report24{From: rep.From, To: rep.To, Locations: len(snap.Locations), Current: []CurrentDown{}, Incidents: rep.Incidents}
+	out := Report24{From: rep.From, To: rep.To, Locations: len(snap.Locations), Current: []CurrentDown{}, Incidents: []IncidentRow{}, Minor: []IncidentRow{}}
+	primary := map[int64]bool{}
+	for _, d := range rep.Devices {
+		primary[d.ID] = d.Primary
+	}
+	for _, i := range rep.Incidents {
+		if primary[i.DeviceID] {
+			out.Incidents = append(out.Incidents, i)
+		} else {
+			out.Minor = append(out.Minor, i)
+		}
+	}
 	affected := map[int64]bool{}
 	for _, l := range snap.Locations {
 		for _, d := range l.Devices {

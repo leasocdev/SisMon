@@ -55,9 +55,10 @@
       <span>Locații monitorizate: <strong>{report.locations}</strong></span>
       <span>Afectate acum: <strong>{report.affected_now}</strong></span>
       <span>Întreruperi în 24 h: <strong>{report.incidents.length}</strong></span>
+      <span>Incidente minore: <strong>{report.minor_incidents.length}</strong></span>
     </p>
 
-    <h2>Situația curentă (echipamente primare indisponibile)</h2>
+    <h2>Situația curentă</h2>
     <table class="current">
       <thead>
         <tr><th scope="col">Locație</th><th scope="col">Echipament primar</th><th scope="col">Indisponibil de la</th><th scope="col">Durată</th></tr>
@@ -79,6 +80,11 @@
     <h2>Întreruperi în ultimele 24 de ore</h2>
     <div class="outages">
       <IncidentList incidents={report.incidents} empty="Nicio întrerupere în ultimele 24 de ore." />
+    </div>
+
+    <h2>Incidente minore în ultimele 24 de ore</h2>
+    <div class="outages">
+      <IncidentList incidents={report.minor_incidents} empty="Niciun incident minor în ultimele 24 de ore." />
     </div>
   {:else if !error}
     <p class="muted">Se încarcă…</p>

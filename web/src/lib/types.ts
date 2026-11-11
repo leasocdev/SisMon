@@ -156,6 +156,7 @@ export interface Report24 {
   affected_now: number;
   current: { location_id: number; location: string; device_id: number; device: string; since: number }[];
   incidents: IncidentRow[];
+  minor_incidents: IncidentRow[];
 }
 
 export interface CatalogLocation {

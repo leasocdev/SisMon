@@ -25,7 +25,7 @@
     onDrop: () => void;
   } = $props();
 
-  const KINDS = ['PC', 'Router', 'Receptor', 'Server', 'Altele'];
+  const KINDS = ['PC', 'Router', 'Switch', 'Controler', 'Video', 'Receptor', 'Server', 'Altele'];
 
   let testing = $state(false);
   let result = $state<{ ok: boolean; text: string } | null>(null);

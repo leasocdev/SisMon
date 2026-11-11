@@ -149,6 +149,21 @@ th {
 .t-degraded { color: var(--c-degraded-text); }
 .t-unknown { color: var(--c-unknown); }
 .t-error { color: var(--c-error); }
+/* Iconița de stare a echipamentului (card locație și detalii locație) */
+.dev-sym {
+  display: inline-flex;
+  flex: none;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9em;
+  font-weight: 800;
+  line-height: 1;
+  background: var(--surface);
+  border: 2px solid currentColor;
+}
 .f-up { background: var(--c-up); color: var(--on-up); }
 .f-down { background: var(--c-down); color: var(--on-down); }
 .f-degraded { background: var(--c-degraded); color: var(--on-degraded); }

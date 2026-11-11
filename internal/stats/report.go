@@ -305,7 +305,7 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 				return rep, err
 			}
 			row.Durations = d
-			row.Availability = pct(d.Up, d.Up+d.Degraded+d.Down)
+			row.Availability = pct(d.Up+d.Degraded, d.Up+d.Degraded+d.Down) // „Degradată" = doar echipamente secundare căzute; locația funcționează
 			row.Coverage = pct(d.known(), float64(w.b-w.a)/1000)
 		}
 		rep.Locations = append(rep.Locations, row)

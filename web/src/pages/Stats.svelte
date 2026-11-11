@@ -163,7 +163,7 @@
       <div class="kpi card kpi-coverage"><span class="l">Acoperire</span><span class="v">{fmtPct(report.summary.coverage)}</span></div>
       <div class="kpi card kpi-incidents"><span class="l">Incidente</span><span class="v">{report.summary.incidents}</span></div>
       <div class="kpi card kpi-down"><span class="l">Timp indisponibil cumulat</span><span class="v">{fmtDuration(report.summary.down_s)}</span></div>
-      <div class="kpi card kpi-mttr"><span class="l">MTTR</span><span class="v">{report.summary.mttr_s == null ? '—' : fmtDuration(report.summary.mttr_s)}</span></div>
+      <div class="kpi card kpi-mttr"><span class="l"><abbr title="Mean Time To Repair — timpul mediu de remediere: durata medie a unui incident, de la apariția căderii până la revenirea echipamentului">MTTR</abbr> · timp mediu de remediere</span><span class="v">{report.summary.mttr_s == null ? '—' : fmtDuration(report.summary.mttr_s)}</span></div>
     </section>
 
     <h2>Locații</h2>

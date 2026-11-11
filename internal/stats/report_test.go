@@ -111,14 +111,14 @@ func TestAvailabilityExcludesUnknown(t *testing.T) {
 	}
 }
 
-func TestLocationDegradedCountsAgainst(t *testing.T) {
+func TestLocationDegradedCountsAsAvailable(t *testing.T) {
 	e := newEnv(t)
 	e.device(1, 1, true, 0)
 	e.ivl("location", 1, state.Up, 0, 50)
 	e.ivl("location", 1, state.Degraded, 50, 75)
 	e.ivl("location", 1, state.Down, 75, 100)
 	r := e.build(Query{From: T(0), To: T(100)}, 100)
-	if l := r.Locations[0]; l.Availability == nil || !near(*l.Availability, 50) || !near(l.Durations.Degraded, 25) {
+	if l := r.Locations[0]; l.Availability == nil || !near(*l.Availability, 75) || !near(l.Durations.Degraded, 25) {
 		t.Fatalf("%+v", l)
 	}
 }

@@ -10,6 +10,8 @@
     sort = $bindable(),
   }: { filter: Set<State>; query: string; sort: SortMode } = $props();
 
+  // „Funcționale" primul în bara de filtre.
+  const ORDER: State[] = ['up', ...STATES.filter((s) => s !== 'up')];
   const t = $derived(totals(live.locations));
   const warning = $derived((live.tick, live.warning()));
   let search: HTMLInputElement;
@@ -36,7 +38,7 @@
 
 <div class="topbar">
   <div class="totals" role="group" aria-label="Filtru după stare">
-    {#each STATES as s (s)}
+    {#each ORDER as s (s)}
       <button type="button" class="tot" class:on={filter.has(s)} aria-pressed={filter.has(s)} onclick={() => toggle(s)}>
         <span class="sym f-{s}" aria-hidden="true">{STATE_SYMBOL[s]}</span>
         <span class="n">{t[s]}</span>
@@ -70,7 +72,13 @@
     flex-wrap: wrap;
     gap: 10px;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: 3px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
   }
   .totals {
     display: flex;

@@ -232,3 +232,40 @@ Administrare → Identitate → Logo: PNG de cel mult 1024 × 1024 pixeli și 50
 ## 15. Versiuni noi
 
 Binarele se produc cu `go run ./tools/release --version X.Y.Z` (sau automat de CI la eticheta `vX.Y.Z`), împreună cu `SHA256SUMS`. Verificați suma de control înainte de instalare (`sha256sum -c SHA256SUMS` pe Linux, `Get-FileHash` pe Windows), apoi urmați secțiunea 6.
+
+## 16. Dezinstalare
+
+`netwatch uninstall` elimină **doar serviciul**. Datele (baza, backup-urile, logurile, logo-ul) și executabilul rămân și se șterg separat. Ștergerea datelor este definitivă: faceți înainte un backup (secțiunea 5) dacă vă pot fi utile.
+
+### Windows
+
+PowerShell ca administrator, în directorul cu `netwatch.exe`:
+
+```powershell
+.\netwatch.exe stop
+.\netwatch.exe uninstall
+Remove-Item -Recurse -Force C:\ProgramData\NetWatch
+```
+
+Apoi ștergeți directorul cu `netwatch.exe` (de exemplu `C:\Program Files\NetWatch\`).
+
+### Linux
+
+```bash
+sudo netwatch stop
+sudo netwatch uninstall
+sudo rm -rf /var/lib/netwatch
+sudo rm /usr/local/bin/netwatch /etc/sysctl.d/60-netwatch.conf
+sudo userdel netwatch
+```
+
+### Dacă ați rulat doar `netwatch run`
+
+Nu există serviciu. Opriți procesul (Ctrl+C) și ștergeți directorul de date și executabilul.
+
+### De verificat
+
+- Dacă ați folosit `--data DIR` sau `netwatch.toml`, ștergeți acel director, nu cel implicit.
+- „Director backup secundar” din Setări (de exemplu un disc de rețea) nu se șterge automat.
+- Instanța demonstrativă își ține datele în `demo-data` (sau în directorul dat cu `--data`).
+- Dacă ați creat manual o regulă de firewall pentru portul 8501, ștergeți-o; aplicația nu creează reguli singură.

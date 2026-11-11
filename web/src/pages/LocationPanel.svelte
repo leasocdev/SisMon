@@ -184,7 +184,7 @@
       {#each loc.devices as d (d.id)}
         <li class:sel={selected === d.id}>
           <div class="drow">
-            <span class="sym t-{d.state}" aria-hidden="true">{STATE_SYMBOL[d.state]}</span>
+            <span class="dev-sym t-{d.state}" aria-hidden="true">{STATE_SYMBOL[d.state]}</span>
             <span class="dn">{#if d.is_primary}<span class="star" title="Echipament primar">★</span>{/if}{d.name}</span>
             <span class="host">{d.host}</span>
             <StatusBadge state={d.state} size="small" />

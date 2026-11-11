@@ -28,8 +28,8 @@ Deschideți `http://SERVER:8501/` în browser. Pagini:
 | `/` Monitorizare | carduri pe locații, filtre pe stări, căutare, panou de detalii (`/locatie/{id}`) |
 | `/dispecerat` | ecran mare, fără meniu; antet cu logo, denumire, subtitlu, oră și dată; rotația grilă/hartă și schema de culori se setează în Administrare; `?rotatie=60` și `?tema=luminoasa` le suprascriu |
 | `/harta` | hartă OpenStreetMap (prin proxy-ul serverului, cu cache); contururi locale când OSM nu răspunde |
-| `/statistici` | disponibilitate, acoperire, incidente, MTTR, pe orice perioadă de până la 400 de zile |
-| `/raport-24h` | situația curentă și întreruperile ultimelor 24 h, pregătit pentru tipărire A4 |
+| `/statistici` | disponibilitate (locația e indisponibilă doar când cad echipamentele primare), acoperire, incidente, MTTR (timp mediu de remediere), pe orice perioadă de până la 400 de zile |
+| `/raport-24h` | situația curentă și întreruperile echipamentelor primare din ultimele 24 h, plus incidentele minore (echipamente secundare), pregătit pentru tipărire A4 |
 | `/statistici` → CSV / Excel / PDF | exportul exact al datelor afișate |
 | `/administrare` | locații și echipamente, import/export CSV și Excel, setări, identitate și logo, backup-uri, jurnal, diagnostic, parolă |
 
@@ -44,7 +44,7 @@ netwatch.exe demo            # http://localhost:8502/, date simulate în .demo-d
 ## Versiuni (release)
 
 ```bash
-go run ./tools/release --version 1.0.0     # dist/netwatch-windows-amd64.exe, netwatch-linux-amd64, netwatch-linux-arm64, SHA256SUMS
+go run ./tools/release --version 1.5.0     # dist/netwatch-windows-amd64.exe, netwatch-linux-amd64, netwatch-linux-arm64, SHA256SUMS
 go run ./tools/release --skip-web           # fără recompilarea interfeței
 ```
 

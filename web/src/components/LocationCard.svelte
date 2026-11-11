@@ -39,7 +39,7 @@
   <ul class="devices">
     {#each loc.devices as d (d.id)}
       <li class:primary={d.is_primary}>
-        <span class="sym t-{d.state}" aria-hidden="true">{STATE_SYMBOL[d.state]}</span>
+        <span class="dev-sym t-{d.state}" aria-hidden="true">{STATE_SYMBOL[d.state]}</span>
         <span class="dname">
           {#if d.is_primary}<span class="star" title="Echipament primar">★</span><span class="sr-only">primar</span>{/if}
           {d.name}
@@ -63,8 +63,9 @@
   .loc-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 10px 12px;
+    gap: 10px;
+    padding: 16px 18px;
+    font-size: 1.08em;
     color: var(--fg);
     text-decoration: none;
     border: 2px solid var(--sc, var(--c-unknown));
@@ -123,14 +124,22 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    font-size: 0.88em;
+    gap: 5px;
+    font-size: 0.9em;
   }
   .devices li {
     display: grid;
-    grid-template-columns: 1.1em minmax(0, 1fr) auto auto;
-    gap: 6px;
-    align-items: baseline;
+    grid-template-columns: 1.3em minmax(0, 1fr) auto auto;
+    gap: 8px;
+    align-items: center;
+  }
+  .host {
+    padding-right: 10px;
+    border-right: 2px solid color-mix(in srgb, var(--fg) 45%, transparent);
+  }
+  .info {
+    min-width: 4.5em;
+    font-weight: 600;
   }
   .dname {
     overflow: hidden;

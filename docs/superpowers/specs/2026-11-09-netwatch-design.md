@@ -157,7 +157,7 @@ O locație fără echipamente primare nu poate fi salvată. Starea locației est
 
 ### Indicatori
 
-- **Disponibilitate** = `up` / (`up` + `down`) pentru echipamente; `up` / (`up` + `degraded` + `down`) pentru locații. „—” dacă numitorul e zero.
+- **Disponibilitate** = `up` / (`up` + `down`) pentru echipamente; (`up` + `degraded`) / (`up` + `degraded` + `down`) pentru locații (`degraded` = doar secundare căzute, locația funcționează). „—” dacă numitorul e zero.
 - **Acoperire** = timp cu stare cunoscută (`up`, `down`, `degraded`) / durata perioadei eligibile.
 - **Perioada eligibilă** = intersecția perioadei selectate cu [`created_at`, `archived_at` sau acum].
 - **MTTR** = media duratelor incidentelor încheiate cu `recovered` în perioadă.
@@ -278,7 +278,7 @@ Login/logout/sesiune; CRUD locații și echipamente (cu arhivare); `POST /device
 2. **Dispecerat `/dispecerat`** — ecran complet, fără meniuri, potrivit pentru modul kiosk. Grilă auto-dimensionată fără derulare, text mare. Bandă superioară cu locațiile cu probleme („Cahul · Router · de 12 min”). Ceas mare și indicator de conexiune; la pierderea conexiunii, chenar gri „DATE NEACTUALIZATE”. Opțiuni în URL: rotație grilă/hartă la N secunde, sunet.
 3. **Hartă `/harta`** — Leaflet cu dale prin proxy, marcaje colorate cu simbol, grupare la zoom mic, popup cu detalii și legătură spre panou. O dală eșuată se reîncearcă; trecerea la contururi locale (GeoJSON Natural Earth încorporat) doar dacă eșuează majoritatea dalelor vizibile, cu revenire automată.
 4. **Statistici `/statistici`** — filtre sincronizate cu URL-ul; perioade rapide (24 h, 7 z, 30 z, luna curentă, luna trecută) sau personalizată. Indicatori: disponibilitate, acoperire, număr incidente, timp indisponibil cumulat, MTTR. Tabel sortabil pe echipamente, bare de stare pe locații, listă de incidente. Exporturi CSV/Excel/PDF cu exact datele afișate.
-5. **Raport 24H `/raport-24h`** — actualizat automat (SSE); situația curentă pe primare, întreruperile ultimelor 24 h; stil de tipărire pe A4.
+5. **Raport 24H `/raport-24h`** — actualizat automat (SSE); situația curentă pe primare, întreruperile primarelor din ultimele 24 h și o secțiune separată „Incidente minore” pentru secundare; stil de tipărire pe A4.
 6. **Administrare `/administrare`** — listă locații cu căutare; editor: date generale, coordonate pe hartă, rânduri de echipamente cu reordonare prin tragere, ★ primar, suprascrieri opționale ale pragurilor, buton „Testează acum” pe rând; avertisment la modificări nesalvate. Import: încărcare, previzualizare tabelară cu erori pe rând și celulă, aplicare atomică. Pagini: Setări monitorizare, Identitate și logo, Backup-uri, Jurnal audit, Diagnostic, Parolă, Despre.
 
 ### Sunet

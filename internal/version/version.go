@@ -2,5 +2,5 @@
 package version
 
 // Version is overridden at build time:
-// -ldflags "-X netwatch/internal/version.Version=1.4.0"
-var Version = "1.4.0-dev"
+// -ldflags "-X netwatch/internal/version.Version=1.5.0"
+var Version = "1.5.0-dev"
