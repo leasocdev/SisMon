@@ -79,7 +79,6 @@ CREATE TABLE incidents(
   id INTEGER PRIMARY KEY,
   device_id INTEGER NOT NULL REFERENCES devices(id),
   observed_at INTEGER NOT NULL,
-  confirmed_at INTEGER NOT NULL,
   ended_at INTEGER,
   end_reason TEXT
 );

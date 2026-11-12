@@ -16,7 +16,6 @@
           {#if showLocation}<th scope="col">Locație</th>{/if}
           <th scope="col">Echipament</th>
           <th scope="col">Început</th>
-          <th scope="col">Confirmat</th>
           <th scope="col">Sfârșit</th>
           <th scope="col">Durată</th>
           <th scope="col">Stare</th>
@@ -28,7 +27,6 @@
             {#if showLocation}<td>{i.location}</td>{/if}
             <td>{i.device}</td>
             <td>{fmtDateTime(i.observed_at)}</td>
-            <td>{fmtDateTime(i.confirmed_at)}</td>
             <td>{i.ended_at == null ? '—' : fmtDateTime(i.ended_at)}</td>
             <td>{fmtDuration(i.duration_s)}</td>
             <td>{i.reason_text}</td>

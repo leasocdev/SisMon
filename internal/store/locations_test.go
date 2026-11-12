@@ -90,7 +90,7 @@ func TestHostChangeResets(t *testing.T) {
 	ctx := context.Background()
 	r := save(t, s, nil, input(t, "A", "10.0.0.1"), now)
 	id := r.Added[0]
-	s.DB.Exec(`INSERT INTO incidents(device_id,observed_at,confirmed_at) VALUES(?,?,?)`, id, Ms(now), Ms(now))
+	s.DB.Exec(`INSERT INTO incidents(device_id,observed_at) VALUES(?,?)`, id, Ms(now))
 	s.DB.Exec(`UPDATE device_status SET state='down' WHERE device_id=?`, id)
 	tx, _ := s.DB.Begin()
 	CloseAndOpen(ctx, tx, EntityDevice, id, state.Down, now.Add(time.Minute))

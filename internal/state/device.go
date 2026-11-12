@@ -34,7 +34,7 @@ func (d *Device) Apply(c Check, t Thresholds) *Transition {
 		from := d.State
 		d.State, d.Pending, d.Streak, d.StreakStart = Error, "", 0, time.Time{}
 		if from != Error {
-			return &Transition{From: from, To: Error, At: c.At, ConfirmedAt: c.At}
+			return &Transition{From: from, To: Error, At: c.At}
 		}
 		return nil
 	}
@@ -44,10 +44,10 @@ func (d *Device) Apply(c Check, t Thresholds) *Transition {
 	d.Streak++
 	var tr *Transition
 	if c.OK && d.State != Up && d.Streak >= t.Recoveries {
-		tr = &Transition{From: d.State, To: Up, At: d.StreakStart, ConfirmedAt: c.At}
+		tr = &Transition{From: d.State, To: Up, At: d.StreakStart}
 		d.State = Up
 	} else if !c.OK && d.State != Down && d.Streak >= t.Failures {
-		tr = &Transition{From: d.State, To: Down, At: d.StreakStart, ConfirmedAt: c.At}
+		tr = &Transition{From: d.State, To: Down, At: d.StreakStart}
 		d.State = Down
 	}
 	dir := Down

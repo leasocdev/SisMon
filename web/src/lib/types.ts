@@ -127,7 +127,6 @@ export interface IncidentRow {
   location: string;
   device: string;
   observed_at: number;
-  confirmed_at: number;
   ended_at: number | null;
   reason: string;
   reason_text: string;

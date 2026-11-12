@@ -140,7 +140,7 @@ func StatsXLSX(w io.Writer, rep stats.Report, m Meta) error {
 		if i.EndedAt != nil {
 			end = fmtMs(*i.EndedAt)
 		}
-		if err := inc.put(Safe(i.Location), Safe(i.Device), fmtMs(i.ObservedAt), fmtMs(i.ConfirmedAt), end, i.DurationS/60, Safe(i.ReasonText)); err != nil {
+		if err := inc.put(Safe(i.Location), Safe(i.Device), fmtMs(i.ObservedAt), end, i.DurationS/60, Safe(i.ReasonText)); err != nil {
 			return err
 		}
 	}

@@ -105,7 +105,7 @@ samples(device_id, ts, ok INTEGER, latency_ms REAL NULL, loss_pct REAL, error_co
   INDEX (device_id, ts)                                    -- retenție 90 de zile
 samples_hourly(device_id, hour_ts, checks, ok_checks, lat_avg, lat_min, lat_max, loss_avg,
                PRIMARY KEY(device_id, hour_ts))            -- nelimitat
-incidents(id, device_id, observed_at, confirmed_at, ended_at NULL, end_reason NULL)
+incidents(id, device_id, observed_at, ended_at NULL, end_reason NULL)
   INDEX (device_id, observed_at); INDEX parțial WHERE ended_at IS NULL
 audit(id, ts, action, entity, entity_id, details_json)
 sessions(token_hash BLOB PRIMARY KEY, created_at, last_seen_at, csrf TEXT)
@@ -135,7 +135,7 @@ sessions(token_hash BLOB PRIMARY KEY, created_at, last_seen_at, csrf TEXT)
 
 ### Atribuire retroactivă
 
-- La confirmarea căderii, intervalul anterior se închide la momentul **primei verificări eșuate** din serie (`observed_at`), iar intervalul `down` începe de acolo. Incidentul are `observed_at` și `confirmed_at`.
+- La confirmarea căderii, intervalul anterior se închide la momentul **primei verificări eșuate** din serie (`observed_at`), iar intervalul `down` începe de acolo. Incidentul are `observed_at` (început) și `ended_at` (sfârșit).
 - La confirmarea revenirii, intervalul `down` se închide la momentul **primei verificări reușite** din serie; incidentul se închide cu `recovered` la același moment.
 - Astfel, duratele din cronologie, statistici, raportul 24H și exporturi sunt identice.
 

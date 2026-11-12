@@ -27,7 +27,7 @@ func sampleReport() stats.Report {
 		},
 		Locations: []stats.LocationRow{{ID: 1, Name: "Cahul", Durations: stats.Durations{Up: 3600 * 167, Down: 3600}, Availability: f(99.5), Coverage: f(100)}},
 		Incidents: []stats.IncidentRow{{ID: 1, DeviceID: 1, LocationID: 1, Location: "Cahul", Device: "Router", ObservedAt: time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC).UnixMilli(),
-			ConfirmedAt: time.Date(2026, 11, 2, 10, 3, 0, 0, time.UTC).UnixMilli(), EndedAt: nil, ReasonText: "În curs", DurationS: 3600}},
+			EndedAt: nil, ReasonText: "În curs", DurationS: 3600}},
 	}
 }
 

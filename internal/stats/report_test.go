@@ -54,12 +54,12 @@ func (e *env) ivl(entity string, id int64, st state.State, a int64, b int64) {
 	e.exec(`INSERT INTO state_intervals(entity,entity_id,state,start_at,end_at) VALUES(?,?,?,?,?)`, entity, id, st, a*1000, end)
 }
 
-func (e *env) incident(dev, obs, conf, ended int64, reason string) {
+func (e *env) incident(dev, obs, ended int64, reason string) {
 	var end, rsn any
 	if ended >= 0 {
 		end, rsn = ended*1000, reason
 	}
-	e.exec(`INSERT INTO incidents(device_id,observed_at,confirmed_at,ended_at,end_reason) VALUES(?,?,?,?,?)`, dev, obs*1000, conf*1000, end, rsn)
+	e.exec(`INSERT INTO incidents(device_id,observed_at,ended_at,end_reason) VALUES(?,?,?,?)`, dev, obs*1000, end, rsn)
 }
 
 func (e *env) build(q Query, nowSec int64) Report {
@@ -145,7 +145,7 @@ func TestReportDeviceCreatedAfterPeriod(t *testing.T) {
 func TestIncidentDurationFromObserved(t *testing.T) {
 	e := newEnv(t)
 	e.device(1, 1, true, 0)
-	e.incident(1, 100, 220, 400, "recovered")
+	e.incident(1, 100, 400, "recovered")
 	r := e.build(Query{From: T(0), To: T(300)}, 1000)
 	if len(r.Incidents) != 1 || !near(r.Incidents[0].DurationS, 200) || r.Incidents[0].ReasonText != "Revenire" || r.Devices[0].Incidents != 1 {
 		t.Fatalf("%+v", r.Incidents)
@@ -156,8 +156,8 @@ func TestIncidentsFilter(t *testing.T) {
 	e := newEnv(t)
 	e.device(1, 1, true, 0)
 	e.ivl("device", 1, state.Up, 0, 100)
-	e.incident(1, 10, 20, 30, "recovered")
-	e.incident(1, 50, 60, -1, "")
+	e.incident(1, 10, 30, "recovered")
+	e.incident(1, 50, -1, "")
 	all := e.build(Query{From: T(0), To: T(100)}, 100)
 	act := e.build(Query{From: T(0), To: T(100), Incidents: "active"}, 100)
 	cl := e.build(Query{From: T(0), To: T(100), Incidents: "closed"}, 100)
@@ -175,9 +175,9 @@ func TestIncidentsFilter(t *testing.T) {
 func TestMTTR(t *testing.T) {
 	e := newEnv(t)
 	e.device(1, 1, true, 0)
-	e.incident(1, 10, 20, 70, "recovered")
-	e.incident(1, 100, 120, 280, "recovered")
-	e.incident(1, 300, 320, 330, "monitoring_gap")
+	e.incident(1, 10, 70, "recovered")
+	e.incident(1, 100, 280, "recovered")
+	e.incident(1, 300, 330, "monitoring_gap")
 	r := e.build(Query{From: T(0), To: T(400)}, 400)
 	if r.Devices[0].MTTRS == nil || !near(*r.Devices[0].MTTRS, 120) {
 		t.Fatalf("%+v", r.Devices[0].MTTRS)
@@ -262,7 +262,7 @@ func TestReport24Current(t *testing.T) {
 	e := newEnv(t)
 	e.device(1, 1, true, 0)
 	now := int64(100_000)
-	e.incident(1, now-600, now-480, -1, "")
+	e.incident(1, now-600, -1, "")
 	snap := live.Snapshot{Locations: []live.LocationView{
 		{ID: 1, Name: "L1", State: state.Down, Devices: []live.DeviceView{
 			{ID: 1, LocationID: 1, Name: "D1", Primary: true, State: state.Down, Since: (now - 480) * 1000, ErrorCode: "timeout"},

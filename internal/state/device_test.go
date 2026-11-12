@@ -27,7 +27,7 @@ func TestHysteresisDownAndRecovery(t *testing.T) {
 			up = tr
 		}
 	}
-	if down == nil || !down.At.Equal(at(2)) || !down.ConfirmedAt.Equal(at(4)) {
+	if down == nil || !down.At.Equal(at(2)) {
 		t.Fatalf("down transition %+v", down)
 	}
 	if up == nil || !up.At.Equal(at(5)) || up.From != Down {

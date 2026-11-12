@@ -164,6 +164,11 @@ th {
   background: var(--surface);
   border: 2px solid currentColor;
 }
+/* Echipament funcțional: bifă simplă, fără cerc. */
+.dev-sym.t-up {
+  border: none;
+  background: none;
+}
 .f-up { background: var(--c-up); color: var(--on-up); }
 .f-down { background: var(--c-down); color: var(--on-down); }
 .f-degraded { background: var(--c-degraded); color: var(--on-degraded); }

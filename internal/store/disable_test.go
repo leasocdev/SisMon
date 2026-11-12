@@ -27,7 +27,7 @@ func TestDisableAndEnableDevice(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := s.DB.Exec(`INSERT INTO incidents(device_id,observed_at,confirmed_at) VALUES(?,?,?)`, sec, Ms(now), Ms(now)); err != nil {
+	if _, err := s.DB.Exec(`INSERT INTO incidents(device_id,observed_at) VALUES(?,?)`, sec, Ms(now)); err != nil {
 		t.Fatal(err)
 	}
 

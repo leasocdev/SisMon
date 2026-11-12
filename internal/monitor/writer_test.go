@@ -100,17 +100,17 @@ func (f *fixture) intervals(t *testing.T, e store.Entity, id int64) []ivl {
 }
 
 type inc struct {
-	observed, confirmed, ended int64
-	reason                     string
+	observed, ended int64
+	reason          string
 }
 
 func (f *fixture) incidents(t *testing.T) []inc {
-	rows, _ := f.st.DB.Query(`SELECT observed_at,confirmed_at,COALESCE(ended_at,-1),COALESCE(end_reason,'') FROM incidents ORDER BY id`)
+	rows, _ := f.st.DB.Query(`SELECT observed_at,COALESCE(ended_at,-1),COALESCE(end_reason,'') FROM incidents ORDER BY id`)
 	defer rows.Close()
 	var out []inc
 	for rows.Next() {
 		var v inc
-		rows.Scan(&v.observed, &v.confirmed, &v.ended, &v.reason)
+		rows.Scan(&v.observed, &v.ended, &v.reason)
 		out = append(out, v)
 	}
 	return out
@@ -129,7 +129,7 @@ func TestWriterDownIncidentRetroactive(t *testing.T) {
 		t.Fatalf("%+v", iv)
 	}
 	in := f.incidents(t)
-	if len(in) != 1 || in[0].observed != ms(step(2)) || in[0].confirmed != ms(step(4)) || in[0].ended != -1 {
+	if len(in) != 1 || in[0].observed != ms(step(2)) || in[0].ended != -1 {
 		t.Fatalf("%+v", in)
 	}
 	li := f.intervals(t, store.EntityLocation, f.loc)
@@ -216,7 +216,7 @@ func TestWriterExpiresGapAtStartup(t *testing.T) {
 	store.CloseAndOpen(ctx, tx, store.EntityDevice, d, state.Down, last.Add(-5*time.Minute))
 	tx.Commit()
 	store.PutStatus(ctx, f.st.DB, store.Status{DeviceID: d, State: state.Down, Since: lastMs, LastCheck: &lastMs})
-	f.st.DB.Exec(`INSERT INTO incidents(device_id,observed_at,confirmed_at) VALUES(?,?,?)`, d, lastMs-300000, lastMs-120000)
+	f.st.DB.Exec(`INSERT INTO incidents(device_id,observed_at) VALUES(?,?)`, d, lastMs-300000)
 	f.w = NewWriter(f.st, f.hub, f.set)
 	f.w.now = func() time.Time { return now }
 	cctx, cancel := context.WithCancel(ctx)

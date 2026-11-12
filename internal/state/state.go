@@ -35,9 +35,8 @@ type Check struct {
 }
 
 // Transition describes a confirmed state change. At is the effective
-// (retroactive) moment; ConfirmedAt is when the change was confirmed.
+// (retroactive) moment.
 type Transition struct {
-	From, To    State
-	At          time.Time
-	ConfirmedAt time.Time
+	From, To State
+	At       time.Time
 }

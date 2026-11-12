@@ -53,17 +53,16 @@ type LocationRow struct {
 
 // IncidentRow is one incident in a report.
 type IncidentRow struct {
-	ID          int64   `json:"id"`
-	DeviceID    int64   `json:"device_id"`
-	LocationID  int64   `json:"location_id"`
-	Location    string  `json:"location"`
-	Device      string  `json:"device"`
-	ObservedAt  int64   `json:"observed_at"`
-	ConfirmedAt int64   `json:"confirmed_at"`
-	EndedAt     *int64  `json:"ended_at"`
-	Reason      string  `json:"reason"`
-	ReasonText  string  `json:"reason_text"`
-	DurationS   float64 `json:"duration_s"`
+	ID         int64   `json:"id"`
+	DeviceID   int64   `json:"device_id"`
+	LocationID int64   `json:"location_id"`
+	Location   string  `json:"location"`
+	Device     string  `json:"device"`
+	ObservedAt int64   `json:"observed_at"`
+	EndedAt    *int64  `json:"ended_at"`
+	Reason     string  `json:"reason"`
+	ReasonText string  `json:"reason_text"`
+	DurationS  float64 `json:"duration_s"`
 }
 
 // Report is the statistics result.
@@ -237,7 +236,7 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 			return rep, err
 		}
 
-		inc, err := tx.QueryContext(ctx, `SELECT id,observed_at,confirmed_at,ended_at,COALESCE(end_reason,'') FROM incidents
+		inc, err := tx.QueryContext(ctx, `SELECT id,observed_at,ended_at,COALESCE(end_reason,'') FROM incidents
 			WHERE device_id=? AND observed_at<? AND (ended_at IS NULL OR ended_at>?) ORDER BY observed_at DESC`, dm.row.ID, dm.w.b, dm.w.a)
 		if err != nil {
 			return rep, err
@@ -247,7 +246,7 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 		for inc.Next() {
 			var r IncidentRow
 			var ended sql.NullInt64
-			if err := inc.Scan(&r.ID, &r.ObservedAt, &r.ConfirmedAt, &ended, &r.Reason); err != nil {
+			if err := inc.Scan(&r.ID, &r.ObservedAt, &ended, &r.Reason); err != nil {
 				inc.Close()
 				return rep, err
 			}

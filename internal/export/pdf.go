@@ -244,7 +244,7 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 
 	// incidents
 	p.heading("Incidente")
-	incCols := []col{{"Locație", 60, "L"}, {"Echipament", 55, "L"}, {"Început", 30, "L"}, {"Confirmat", 30, "L"}, {"Sfârșit", 30, "L"}, {"Durată", 25, "R"}, {"Stare", 47, "L"}}
+	incCols := []col{{"Locație", 75, "L"}, {"Echipament", 70, "L"}, {"Început", 30, "L"}, {"Sfârșit", 30, "L"}, {"Durată", 25, "R"}, {"Stare", 47, "L"}}
 	rows = rows[:0]
 	incidents, omitted := pdfIncidents(rep.Incidents)
 	for _, i := range incidents {
@@ -252,7 +252,7 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 		if i.EndedAt != nil {
 			end = fmtMs(*i.EndedAt)
 		}
-		rows = append(rows, []string{i.Location, i.Device, fmtMs(i.ObservedAt), fmtMs(i.ConfirmedAt), end, dur(i.DurationS), i.ReasonText})
+		rows = append(rows, []string{i.Location, i.Device, fmtMs(i.ObservedAt), end, dur(i.DurationS), i.ReasonText})
 	}
 	p.table(incCols, rows, "Niciun incident în perioada selectată.")
 	if omitted > 0 {

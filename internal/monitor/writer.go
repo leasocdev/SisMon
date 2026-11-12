@@ -306,9 +306,9 @@ func (w *Writer) incident(ctx context.Context, tx *sql.Tx, id int64, info *devIn
 		if w.set.Get().IncidentsFor == "primary" && !info.primary {
 			return nil
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO incidents(device_id,observed_at,confirmed_at)
-			SELECT ?,?,? WHERE NOT EXISTS (SELECT 1 FROM incidents WHERE device_id=? AND ended_at IS NULL)`,
-			id, store.Ms(tr.At), store.Ms(tr.ConfirmedAt), id)
+		_, err := tx.ExecContext(ctx, `INSERT INTO incidents(device_id,observed_at)
+			SELECT ?,? WHERE NOT EXISTS (SELECT 1 FROM incidents WHERE device_id=? AND ended_at IS NULL)`,
+			id, store.Ms(tr.At), id)
 		return err
 	}
 	reason := "recovered"

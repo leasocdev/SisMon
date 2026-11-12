@@ -15,7 +15,7 @@ var (
 	deviceHeader = []string{"Locație", "Echipament", "Host", "Tip", "Primar", "Disponibilitate (%)", "Acoperire (%)",
 		"Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)", "Latență medie (ms)", "Pierderi (%)", "Incidente", "MTTR (min)"}
 	locationHeader = []string{"Locație", "Disponibilitate (%)", "Acoperire (%)", "Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)"}
-	incidentHeader = []string{"Locație", "Echipament", "Început", "Confirmat", "Sfârșit", "Durată (min)", "Stare"}
+	incidentHeader = []string{"Locație", "Echipament", "Început", "Sfârșit", "Durată (min)", "Stare"}
 	locationsCols  = []string{"Locație", "Adresă", "Latitudine", "Longitudine", "Echipament", "Host", "Tip", "Primar", "Observații"}
 )
 
@@ -71,7 +71,7 @@ func incidentRow(i stats.IncidentRow) []string {
 	if i.EndedAt != nil {
 		end = fmtMs(*i.EndedAt)
 	}
-	return []string{Safe(i.Location), Safe(i.Device), fmtMs(i.ObservedAt), fmtMs(i.ConfirmedAt), end, comma(i.DurationS / 60), Safe(i.ReasonText)}
+	return []string{Safe(i.Location), Safe(i.Device), fmtMs(i.ObservedAt), end, comma(i.DurationS / 60), Safe(i.ReasonText)}
 }
 
 // StatsCSV writes the report as blocks separated by an empty row.

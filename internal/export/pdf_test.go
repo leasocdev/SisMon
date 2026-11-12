@@ -25,7 +25,7 @@ func TestPDFLarge(t *testing.T) {
 	}
 	for i := 0; i < 300; i++ {
 		e := time.Now().UnixMilli()
-		rep.Incidents = append(rep.Incidents, stats.IncidentRow{ID: int64(i + 10), Location: long, Device: "R", ObservedAt: e, ConfirmedAt: e, EndedAt: &e, ReasonText: "Revenire", DurationS: 60})
+		rep.Incidents = append(rep.Incidents, stats.IncidentRow{ID: int64(i + 10), Location: long, Device: "R", ObservedAt: e, EndedAt: &e, ReasonText: "Revenire", DurationS: 60})
 	}
 	var b bytes.Buffer
 	if err := StatsPDF(&b, rep, sampleMeta()); err != nil {

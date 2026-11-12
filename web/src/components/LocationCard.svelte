@@ -205,11 +205,6 @@
     color: var(--c-degraded-text);
     font-style: italic;
   }
-  /* Echipament funcțional: bifă simplă, fără cerc. */
-  .dev-sym.t-up {
-    border: none;
-    background: none;
-  }
   .more {
     margin: -4px 0 0;
     font-size: 0.82em;
