@@ -43,6 +43,12 @@ jobs:
           SISMON_EXPECT_ICMP_MODE: ${{ runner.os == 'Linux' && 'linux-unprivileged' || 'windows' }}
         run: go test -race -count=1 ./...
 
+      # Bugetul de timp al raportului pe un an (500 ms) nu se poate măsura cu -race
+      # (SQLite devine de 10–30 de ori mai lent); runner-ul Windows e prea lent pentru un buget absolut.
+      - name: Performanța raportului pe un an (Linux, fără -race)
+        if: runner.os == 'Linux'
+        run: go test -count=1 -run TestReportPerformanceOneYear -v ./internal/stats
+
       - name: ICMP real în modul raw socket (Linux, root)
         if: runner.os == 'Linux'
         run: |

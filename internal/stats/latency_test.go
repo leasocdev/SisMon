@@ -49,6 +49,9 @@ func TestReportPerformanceOneYear(t *testing.T) {
 	if testing.Short() {
 		t.Skip("performance test skipped in -short")
 	}
+	if raceEnabled {
+		t.Skip("time budget is not measurable under -race; CI runs this test separately without it")
+	}
 	e := newEnv(t)
 	year := int64(365 * 86400)
 	now := int64(2_000_000_000)
