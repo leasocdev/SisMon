@@ -38,9 +38,9 @@ jobs:
       - name: Teste cu detectorul de curse
         env:
           CGO_ENABLED: "1"
-          NETWATCH_REQUIRE_ICMP: "1"
-          NETWATCH_REQUIRE_ICMP6: ${{ runner.os == 'Linux' && '1' || '' }}
-          NETWATCH_EXPECT_ICMP_MODE: ${{ runner.os == 'Linux' && 'linux-unprivileged' || 'windows' }}
+          SISMON_REQUIRE_ICMP: "1"
+          SISMON_REQUIRE_ICMP6: ${{ runner.os == 'Linux' && '1' || '' }}
+          SISMON_EXPECT_ICMP_MODE: ${{ runner.os == 'Linux' && 'linux-unprivileged' || 'windows' }}
         run: go test -race -count=1 ./...
 
       - name: ICMP real în modul raw socket (Linux, root)
@@ -49,7 +49,7 @@ jobs:
           sudo sysctl -w net.ipv4.ping_group_range="1 0"
           # separate build cache: root-owned files must not end up in the cached GOCACHE
           sudo env "PATH=$PATH" "GOCACHE=$RUNNER_TEMP/rootcache" "GOMODCACHE=$(go env GOMODCACHE)" \
-            NETWATCH_REQUIRE_ICMP=1 NETWATCH_REQUIRE_ICMP6=1 NETWATCH_EXPECT_ICMP_MODE=linux-raw \
+            SISMON_REQUIRE_ICMP=1 SISMON_REQUIRE_ICMP6=1 SISMON_EXPECT_ICMP_MODE=linux-raw \
             go test -count=1 -run Real -v ./internal/monitor/icmp
 
   web:
@@ -124,7 +124,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: netwatch-${{ github.ref_name }}
+          name: sismon-${{ github.ref_name }}
           path: dist/*
 
       - uses: softprops/action-gh-release@v2

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"netwatch/internal/store"
+	"sismon/internal/store"
 )
 
 // AggregateHour writes samples_hourly for the UTC hour containing `hour`.

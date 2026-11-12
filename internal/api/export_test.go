@@ -18,7 +18,7 @@ func TestExportRoutes(t *testing.T) {
 			t.Fatal(f, w.Code, w.Header(), w.Body.String())
 		}
 		cd := w.Header().Get("Content-Disposition")
-		if !strings.Contains(cd, `attachment; filename="netwatch-statistici-`) || !strings.HasSuffix(cd, "."+f+`"`) {
+		if !strings.Contains(cd, `attachment; filename="sismon-statistici-`) || !strings.HasSuffix(cd, "."+f+`"`) {
 			t.Fatal(cd)
 		}
 	}

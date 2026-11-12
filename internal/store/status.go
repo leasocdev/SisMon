@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"netwatch/internal/state"
+	"sismon/internal/state"
 )
 
 // Status is the persisted current status of a device.

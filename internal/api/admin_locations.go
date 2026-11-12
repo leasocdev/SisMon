@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/monitor/icmp"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/monitor/icmp"
 )
 
 func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {

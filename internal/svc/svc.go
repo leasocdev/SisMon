@@ -1,4 +1,4 @@
-// Package svc installs and runs NetWatch as a system service.
+// Package svc installs and runs SisMon as a system service.
 package svc
 
 import (
@@ -9,8 +9,8 @@ import (
 
 	"github.com/kardianos/service"
 
-	"netwatch/internal/app"
-	"netwatch/internal/config"
+	"sismon/internal/app"
+	"sismon/internal/config"
 )
 
 const systemdScript = `[Unit]
@@ -48,7 +48,7 @@ func (p *Program) Start(service.Service) error {
 	go func() {
 		defer p.wg.Done()
 		if err := app.Run(ctx, p.cfg, p.opt); err != nil {
-			slog.Error("NetWatch s-a oprit cu eroare", "err", err)
+			slog.Error("SisMon s-a oprit cu eroare", "err", err)
 			os.Exit(1)
 		}
 	}()
@@ -75,10 +75,10 @@ func serviceConfig(cfg config.Config) *service.Config {
 	for _, p := range cfg.TrustedProxies {
 		args = append(args, "--trusted-proxy", p)
 	}
-	c := &service.Config{Name: "NetWatch", DisplayName: "NetWatch", Description: "NetWatch — monitorizarea rețelei (ICMP)",
+	c := &service.Config{Name: "SisMon", DisplayName: "SisMon", Description: "SisMon — monitorizarea rețelei (ICMP)",
 		Arguments: args, Option: service.KeyValue{"SystemdScript": systemdScript, "StartType": "automatic", "OnFailure": "restart"}}
 	if service.Platform() == "linux-systemd" {
-		c.UserName = "netwatch"
+		c.UserName = "sismon"
 	}
 	return c
 }

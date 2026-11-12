@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-pdf/fpdf"
 
-	"netwatch/internal/stats"
+	"sismon/internal/stats"
 )
 
 //go:embed fonts/DejaVuSans.ttf fonts/DejaVuSans-Bold.ttf
@@ -165,25 +165,6 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 	}
 	f.SetY(margin + 22)
 
-	// summary
-	sum := rep.Summary
-	mttr := "—"
-	if sum.MTTRS != nil {
-		mttr = dur(*sum.MTTRS)
-	}
-	kpis := [][2]string{{"Disponibilitate", pct(sum.Availability)}, {"Acoperire", pct(sum.Coverage)}, {"Incidente", strconv.Itoa(sum.Incidents)},
-		{"Timp indisponibil", dur(sum.DownS)}, {"MTTR", mttr}}
-	bw := (pageW - 2*margin) / float64(len(kpis))
-	y := f.GetY()
-	for i, k := range kpis {
-		f.SetXY(margin+float64(i)*bw, y)
-		f.SetFont("dejavu", "", 8)
-		f.CellFormat(bw-2, 5, k[0], "LTR", 2, "L", false, 0, "")
-		f.SetFont("dejavu", "B", 13)
-		f.CellFormat(bw-2, 8, k[1], "LBR", 0, "L", false, 0, "")
-	}
-	f.SetXY(margin, y+15)
-
 	// devices
 	p.heading("Echipamente")
 	devCols := []col{{"Locație", 52, "L"}, {"Echipament", 52, "L"}, {"Host", 32, "L"}, {"Tip", 24, "L"}, {"Primar", 13, "C"},
@@ -263,7 +244,7 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 
 	// incidents
 	p.heading("Incidente")
-	incCols := []col{{"Locație", 60, "L"}, {"Echipament", 55, "L"}, {"Început", 30, "L"}, {"Confirmat", 30, "L"}, {"Sfârșit", 30, "L"}, {"Durată", 25, "R"}, {"Motiv", 47, "L"}}
+	incCols := []col{{"Locație", 60, "L"}, {"Echipament", 55, "L"}, {"Început", 30, "L"}, {"Confirmat", 30, "L"}, {"Sfârșit", 30, "L"}, {"Durată", 25, "R"}, {"Stare", 47, "L"}}
 	rows = rows[:0]
 	incidents, omitted := pdfIncidents(rep.Incidents)
 	for _, i := range incidents {

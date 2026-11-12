@@ -14,14 +14,14 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/auth"
-	"netwatch/internal/domain"
-	"netwatch/internal/jobs"
-	"netwatch/internal/live"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/auth"
+	"sismon/internal/domain"
+	"sismon/internal/jobs"
+	"sismon/internal/live"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 type fakeMonitor struct {
@@ -42,7 +42,7 @@ type fakeBackups struct{ dir string }
 
 func (b *fakeBackups) List() ([]jobs.BackupInfo, error) { return []jobs.BackupInfo{}, nil }
 func (b *fakeBackups) Create(context.Context, string) (jobs.BackupInfo, error) {
-	return jobs.BackupInfo{Name: "netwatch-x-manual.db", Kind: "manual"}, nil
+	return jobs.BackupInfo{Name: "sismon-x-manual.db", Kind: "manual"}, nil
 }
 func (b *fakeBackups) Open(name string) (io.ReadSeekCloser, jobs.BackupInfo, error) {
 	if strings.ContainsAny(name, `/\`) || strings.Contains(name, "..") {
@@ -137,7 +137,7 @@ func TestStateEndpoint(t *testing.T) {
 		IntervalS int                 `json:"interval_s"`
 	}
 	decode(t, w, &body)
-	if len(body.Locations) != 1 || body.Locations[0].Devices[0].State != "unknown" || body.Identity.Name != "NetWatch" || body.Version != "test" || body.IntervalS != 60 {
+	if len(body.Locations) != 1 || body.Locations[0].Devices[0].State != "unknown" || body.Identity.Name != "SisMon" || body.Version != "test" || body.IntervalS != 60 {
 		t.Fatalf("%+v", body)
 	}
 }

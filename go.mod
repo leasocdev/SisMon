@@ -1,4 +1,4 @@
-module netwatch
+module sismon
 
 go 1.27.3
 

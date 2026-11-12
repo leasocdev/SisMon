@@ -1,4 +1,4 @@
-// Command release builds the NetWatch release binaries:
+// Command release builds the SisMon release binaries:
 //
 //	go run ./tools/release [--version V] [--out dist] [--targets windows/amd64,...] [--skip-web]
 package main
@@ -27,7 +27,7 @@ type options struct {
 }
 
 func artifactName(goos, goarch string) string {
-	name := "netwatch-" + goos + "-" + goarch
+	name := "sismon-" + goos + "-" + goarch
 	if goos == "windows" {
 		name += ".exe"
 	}
@@ -110,9 +110,9 @@ func release(o options) error {
 		}
 		name := artifactName(goos, goarch)
 		fmt.Printf("→ %s (versiunea %s)\n", name, o.version)
-		ldflags := "-s -w -X netwatch/internal/version.Version=" + o.version
+		ldflags := "-s -w -X sismon/internal/version.Version=" + o.version
 		env := []string{"CGO_ENABLED=0", "GOOS=" + goos, "GOARCH=" + goarch}
-		if err := run(o.root, env, "go", "build", "-trimpath", "-ldflags", ldflags, "-o", filepath.Join(out, name), "./cmd/netwatch"); err != nil {
+		if err := run(o.root, env, "go", "build", "-trimpath", "-ldflags", ldflags, "-o", filepath.Join(out, name), "./cmd/sismon"); err != nil {
 			return err
 		}
 		names = append(names, name)

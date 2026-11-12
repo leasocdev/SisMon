@@ -1,10 +1,10 @@
-# NetWatch 1.0 — Specificație de design
+# SisMon 1.0 — Specificație de design
 
 Data: 2026-11-09 · Stare: aprobat conversațional, în revizuire scrisă
 
 ## 1. Scop și context
 
-NetWatch monitorizează prin ICMP disponibilitatea echipamentelor de rețea (routere, PC-uri, radiolinkuri etc.) grupate pe locații, afișează starea în timp real (inclusiv pe un ecran mare de dispecerat), păstrează istoricul și produce statistici și rapoarte. Este o reconstrucție de la zero a NetWatch 0.4 (Python/Flask), care elimină neajunsurile identificate la analiza acesteia. **Nu există migrare din 0.4** — instalarea pornește pe o bază nouă.
+SisMon monitorizează prin ICMP disponibilitatea echipamentelor de rețea (routere, PC-uri, radiolinkuri etc.) grupate pe locații, afișează starea în timp real (inclusiv pe un ecran mare de dispecerat), păstrează istoricul și produce statistici și rapoarte. Este o reconstrucție de la zero a SisMon 0.4 (Python/Flask), care elimină neajunsurile identificate la analiza acesteia. **Nu există migrare din 0.4** — instalarea pornește pe o bază nouă.
 
 ### Cerințe stabilite
 
@@ -34,7 +34,7 @@ Notificări externe (e-mail, Telegram, webhook); conturi multiple/roluri; verifi
 ## 2. Arhitectură
 
 ```
-                    ┌──────────────── netwatch (un proces) ────────────────┐
+                    ┌──────────────── sismon (un proces) ────────────────┐
  browser ──HTTP/SSE─┤ api (handlers, auth, SSE hub) ── webui (go:embed)    │
                     │        │ citiri                                       │
                     │        ▼                                              │
@@ -62,8 +62,8 @@ Notificări externe (e-mail, Telegram, webhook); conturi multiple/roluri; verifi
 ### Structura depozitului
 
 ```
-cmd/netwatch/            main, subcomenzi CLI
-internal/config/         netwatch.toml, flag-uri, directoare implicite
+cmd/sismon/            main, subcomenzi CLI
+internal/config/         sismon.toml, flag-uri, directoare implicite
 internal/store/          conexiune, migrații versionate, interogări tipizate
 internal/state/          reguli pure: histerezis, starea locației, intervale
 internal/monitor/        scheduler, pool, interfața Pinger
@@ -95,6 +95,7 @@ locations(id, name TEXT NOT NULL UNIQUE COLLATE NOCASE, address, lat, lon, notes
 devices(id, location_id → locations, name, host, kind, is_primary INTEGER,
         sort_order, interval_s NULL, failures NULL, recoveries NULL,   -- suprascrieri opționale
         created_at, archived_at,
+        disabled_at NULL, disabled_until NULL,                 -- dezactivare temporară (schema v2)
         UNIQUE(location_id, host) WHERE archived_at IS NULL)
 state_intervals(id, entity TEXT CHECK(entity IN ('device','location')), entity_id,
                 state TEXT CHECK(state IN ('up','down','degraded','unknown','error')),
@@ -110,7 +111,7 @@ audit(id, ts, action, entity, entity_id, details_json)
 sessions(token_hash BLOB PRIMARY KEY, created_at, last_seen_at, csrf TEXT)
 ```
 
-- `end_reason` ∈ `recovered`, `monitoring_gap`, `monitor_error`, `configuration`, `archived`; traducerea în română se face într-un singur loc și este folosită de UI și de toate exporturile.
+- `end_reason` ∈ `recovered`, `monitoring_gap`, `monitor_error`, `configuration`, `archived`, `disabled`; traducerea în română se face într-un singur loc și este folosită de UI și de toate exporturile.
 - Arhivarea setează `archived_at`; nu există ștergere definitivă. Elementele arhivate rămân în statistici și filtre.
 - Modificarea `host` la un echipament închide intervalul și incidentul curent (`configuration`) și pornește un interval `unknown`.
 
@@ -155,6 +156,8 @@ Calculată din stările echipamentelor active; `error` se tratează ca `unknown`
 
 O locație fără echipamente primare nu poate fi salvată. Starea locației este înregistrată în `state_intervals` doar la schimbare.
 
+Un echipament dezactivat (`disabled_at` nenul) nu este verificat, nu intră în starea locației și nu apare în vederea live; intervalul lui de stare și incidentul deschis se închid la dezactivare (perioada rămâne neacoperită), iar la reactivare pornește din `unknown`. `disabled_until` (opțional) îl reactivează automat.
+
 ### Indicatori
 
 - **Disponibilitate** = `up` / (`up` + `down`) pentru echipamente; (`up` + `degraded`) / (`up` + `degraded` + `down`) pentru locații (`degraded` = doar secundare căzute, locația funcționează). „—” dacă numitorul e zero.
@@ -190,7 +193,7 @@ O locație fără echipamente primare nu poate fi salvată. Starea locației est
 
 ### Implementări Pinger
 
-- **Linux**: socket ICMP neprivilegiat (`udp4`/`udp6`), dacă `net.ipv4.ping_group_range` permite; altfel socket raw cu `CAP_NET_RAW` (setat de `netwatch install` prin `AmbientCapabilities` în unitatea systemd). Dacă niciuna nu este disponibilă: toate echipamentele `error/permission` și mesaj clar în UI.
+- **Linux**: socket ICMP neprivilegiat (`udp4`/`udp6`), dacă `net.ipv4.ping_group_range` permite; altfel socket raw cu `CAP_NET_RAW` (setat de `sismon install` prin `AmbientCapabilities` în unitatea systemd). Dacă niciuna nu este disponibilă: toate echipamentele `error/permission` și mesaj clar în UI.
 - **Windows**: `IcmpSendEcho2` / `Icmp6SendEcho2`; nu necesită drepturi de administrator.
 - **Fake**: scenarii deterministe pentru teste și modul demo.
 
@@ -255,7 +258,7 @@ Login/logout/sesiune; CRUD locații și echipamente (cu arhivare); `POST /device
 - **Proxy de încredere**: `--trusted-proxy <IP/CIDR>` (repetabil). Doar pentru aceste surse se folosesc `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` (pentru IP-ul clientului, rate-limit, `Origin`, cookie `Secure`).
 - **HTTPS opțional**: `--tls auto` (certificat autosemnat generat în directorul de date, valabil 5 ani) sau `--tls-cert`/`--tls-key`. Fără TLS, pagina de login afișează avertisment.
 - **Parolă**: Argon2id (m=64 MiB, t=3, p=2), 12–200 caractere. Rate-limit: 5 încercări eșuate / 5 min / IP, cu întârziere progresivă; tabelă limitată cu eliminarea celor mai vechi intrări (fără golire totală).
-- **Prima configurare**: dacă nu există parolă, `/administrare` afișează formularul de setare doar pentru conexiuni loopback fără antete de proxy; altfel indică comanda `netwatch set-password`.
+- **Prima configurare**: dacă nu există parolă, `/administrare` afișează formularul de setare doar pentru conexiuni loopback fără antete de proxy; altfel indică comanda `sismon set-password`.
 - **Antete**: CSP strict (`default-src 'self'`; `img-src 'self' data:`; fără `unsafe-inline`), `X-Content-Type-Options`, `Referrer-Policy`, `frame-ancestors 'none'`.
 - **Logo**: PNG validat (structură, CRC, maximum 1024 × 1024, 500 KB) și reencodat de server înainte de salvare.
 - **Exporturi**: protecție împotriva injectării de formule doar în CSV/XLSX statistice; exportul locațiilor (destinat reimportului) scrie valorile neschimbate, iar în XLSX ca text explicit.
@@ -274,12 +277,12 @@ Login/logout/sesiune; CRUD locații și echipamente (cu arhivare); `POST /device
 
 ### Pagini
 
-1. **Monitorizare `/`** — bara de sus: totaluri pe stări (filtrabile la click), căutare după nume/IP, sănătatea monitorului, buton sunet. Grilă de carduri sortată implicit după gravitate (roșu, portocaliu, gri/eroare, verde), cu opțiuni alfabetic/manual. Card: nume, stare, durata stării curente, echipamente cu ★ pentru primare, latență curentă, mini-cronologie pe 24 h; puls scurt la o problemă nouă. Click → panou lateral de detalii (`/locatie/{id}`, URL partajabil), actualizat în timp real: echipamente cu stare/în confirmare/eroare, cronologie 24 h/7 z/30 z, grafic latență cu min/max și pierderi, incidentele locației.
+1. **Monitorizare `/`** — bara de sus: totaluri pe stări (filtrabile la click), căutare după nume/IP, sănătatea monitorului, buton sunet. Grilă de carduri sortată implicit după gravitate (roșu, portocaliu, gri/eroare, verde), cu opțiuni alfabetic/manual. Card: nume, stare, echipamente cu ★ pentru primare (cele cu probleme primele, mesajul de eroare sub nume), latență curentă, mini-cronologie pe 24 h; puls scurt la o problemă nouă. Modul „Compact” (implicit) arată la locațiile funcționale doar echipamentele primare. Click → panou lateral de detalii (`/locatie/{id}`, URL partajabil), actualizat în timp real: echipamente cu stare/în confirmare/eroare, cronologie 24 h/7 z/30 z, grafic latență cu min/max și pierderi, incidentele locației.
 2. **Dispecerat `/dispecerat`** — ecran complet, fără meniuri, potrivit pentru modul kiosk. Grilă auto-dimensionată fără derulare, text mare. Bandă superioară cu locațiile cu probleme („Cahul · Router · de 12 min”). Ceas mare și indicator de conexiune; la pierderea conexiunii, chenar gri „DATE NEACTUALIZATE”. Opțiuni în URL: rotație grilă/hartă la N secunde, sunet.
 3. **Hartă `/harta`** — Leaflet cu dale prin proxy, marcaje colorate cu simbol, grupare la zoom mic, popup cu detalii și legătură spre panou. O dală eșuată se reîncearcă; trecerea la contururi locale (GeoJSON Natural Earth încorporat) doar dacă eșuează majoritatea dalelor vizibile, cu revenire automată.
-4. **Statistici `/statistici`** — filtre sincronizate cu URL-ul; perioade rapide (24 h, 7 z, 30 z, luna curentă, luna trecută) sau personalizată. Indicatori: disponibilitate, acoperire, număr incidente, timp indisponibil cumulat, MTTR. Tabel sortabil pe echipamente, bare de stare pe locații, listă de incidente. Exporturi CSV/Excel/PDF cu exact datele afișate.
-5. **Raport 24H `/raport-24h`** — actualizat automat (SSE); situația curentă pe primare, întreruperile primarelor din ultimele 24 h și o secțiune separată „Incidente minore” pentru secundare; stil de tipărire pe A4.
-6. **Administrare `/administrare`** — listă locații cu căutare; editor: date generale, coordonate pe hartă, rânduri de echipamente cu reordonare prin tragere, ★ primar, suprascrieri opționale ale pragurilor, buton „Testează acum” pe rând; avertisment la modificări nesalvate. Import: încărcare, previzualizare tabelară cu erori pe rând și celulă, aplicare atomică. Pagini: Setări monitorizare, Identitate și logo, Backup-uri, Jurnal audit, Diagnostic, Parolă, Despre.
+4. **Statistici `/statistici`** — filtre sincronizate cu URL-ul; perioade rapide (24 h, 7 z, 30 z, luna curentă, luna trecută) sau personalizată. Tabel pe locații (disponibilitate, acoperire, bare de stare), tabel sortabil pe echipamente (disponibilitate, acoperire, latență, pierderi, incidente, MTTR), listă de incidente; fără carduri de rezumat agregat. Exporturi CSV/Excel/PDF cu exact datele afișate.
+5. **Raport 24H `/raport-24h`** — actualizat automat (SSE); locațiile indisponibile acum (un rând per locație, cu primarele căzute și cauza, cele mai vechi primele), întreruperile primarelor din ultimele 24 h și o secțiune separată „Incidente minore” pentru secundare; stil de tipărire pe A4.
+6. **Administrare `/administrare`** — listă locații cu căutare; editor: date generale, coordonate pe hartă, rânduri de echipamente cu reordonare prin tragere, ★ primar, suprascrieri opționale ale pragurilor, dezactivare temporară cu reactivare automată opțională, buton „Testează acum” pe rând; avertisment la modificări nesalvate. Import: încărcare, previzualizare tabelară cu erori pe rând și celulă, aplicare atomică. Pagini: Setări monitorizare, Identitate și logo, Backup-uri, Jurnal audit, Diagnostic, Parolă, Despre.
 
 ### Sunet
 
@@ -297,7 +300,7 @@ Comutator pe paginile Monitorizare, Dispecerat și Raport 24H; preferință reț
 
 ### Exporturi
 
-- **Statistici** CSV (UTF-8 cu BOM, separator `;` pentru compatibilitate cu Excel în setările regionale românești), XLSX (foi: Echipamente, Locații, Incidente, Perioadă și filtre), PDF A4 landscape (rezumat, tabel echipamente, bare de stare locații, incidente; font DejaVu Sans; număr de pagină și fus orar în subsol).
+- **Statistici** CSV (UTF-8 cu BOM, separator `;` pentru compatibilitate cu Excel în setările regionale românești), XLSX (foi: Echipamente, Locații, Incidente, Perioadă și filtre), PDF A4 landscape (tabel echipamente, bare de stare locații, incidente; font DejaVu Sans; număr de pagină și fus orar în subsol).
 - **Locații** CSV/XLSX în formatul de import (reimportabil fără pierderi).
 
 ## 10. Operare
@@ -306,22 +309,22 @@ Comutator pe paginile Monitorizare, Dispecerat și Raport 24H; preferință reț
 
 | Comandă | Efect |
 |---|---|
-| `netwatch run` | Rulare în prim-plan. Flag-uri: `--data`, `--listen` (implicit `:8501`), `--tls`, `--tls-cert`, `--tls-key`, `--trusted-proxy`. |
-| `netwatch install` / `uninstall` | Instalează/elimină serviciul (Windows Service; systemd cu utilizator dedicat `netwatch`, `AmbientCapabilities=CAP_NET_RAW`). |
-| `netwatch start` / `stop` / `status` | Control serviciu. |
-| `netwatch set-password` | Parolă administrator (interactiv, fără ecou). |
-| `netwatch backup` | Backup imediat. |
-| `netwatch restore FIȘIER` | Oprește serviciul dacă rulează, verifică integritatea și versiunea, salvează baza curentă, restaurează, șterge sesiunile, repornește serviciul. |
-| `netwatch demo` | Rulează cu pinger simulat într-un director separat (`demo-data`), cu scenarii care evoluează în timp; banner „MOD DEMONSTRATIV”. |
-| `netwatch version` | Versiunea. |
+| `sismon run` | Rulare în prim-plan. Flag-uri: `--data`, `--listen` (implicit `:8501`), `--tls`, `--tls-cert`, `--tls-key`, `--trusted-proxy`. |
+| `sismon install` / `uninstall` | Instalează/elimină serviciul (Windows Service; systemd cu utilizator dedicat `sismon`, `AmbientCapabilities=CAP_NET_RAW`). |
+| `sismon start` / `stop` / `status` | Control serviciu. |
+| `sismon set-password` | Parolă administrator (interactiv, fără ecou). |
+| `sismon backup` | Backup imediat. |
+| `sismon restore FIȘIER` | Oprește serviciul dacă rulează, verifică integritatea și versiunea, salvează baza curentă, restaurează, șterge sesiunile, repornește serviciul. |
+| `sismon demo` | Rulează cu pinger simulat într-un director separat (`demo-data`), cu scenarii care evoluează în timp; banner „MOD DEMONSTRATIV”. |
+| `sismon version` | Versiunea. |
 
 - Ieșirea consolei este UTF-8 (pe Windows se setează pagina de cod a consolei; la redirecționare se scrie UTF-8).
 - Un lock exclusiv pe directorul de date împiedică două instanțe; fișierul de lock nu crește.
 
 ### Configurare și directoare
 
-- Implicit: Windows `C:\ProgramData\NetWatch`, Linux `/var/lib/netwatch`; în modul `run` fără serviciu se poate folosi `--data`.
-- `netwatch.toml` în directorul de date pentru opțiunile de pornire; flag-urile au prioritate. Setările de monitorizare sunt în bază și se modifică din UI.
+- Implicit: Windows `C:\ProgramData\SisMon`, Linux `/var/lib/sismon`; în modul `run` fără serviciu se poate folosi `--data`.
+- `sismon.toml` în directorul de date pentru opțiunile de pornire; flag-urile au prioritate. Setările de monitorizare sunt în bază și se modifică din UI.
 
 ### Joburi de fundal (fiecare pe firul propriu)
 
@@ -336,7 +339,7 @@ Comutator pe paginile Monitorizare, Dispecerat și Raport 24H; preferință reț
 
 ### Jurnale
 
-Fișier rotit `logs/netwatch.log` (5 × 5 MB, JSON pe linie) și ieșirea standard (journald pe Linux; Event Log prin `kardianos/service` pe Windows).
+Fișier rotit `logs/sismon.log` (5 × 5 MB, JSON pe linie) și ieșirea standard (journald pe Linux; Event Log prin `kardianos/service` pe Windows).
 
 ### Actualizare
 
@@ -349,4 +352,4 @@ Se înlocuiește executabilul și se repornește serviciul. Migrațiile de schem
 - **Performanță**: un an simulat pentru 60 de echipamente — raport pe toată perioada < 500 ms, bază < 300 MB; ciclu cu 500 de echipamente fără întârzieri.
 - **ICMP real**: ping la `127.0.0.1`/`::1` (reușit) și la o adresă TEST-NET (eșec) pe Windows și Linux în CI.
 - **End-to-end UI** (Playwright): monitorizare și panou detalii, dispecerat (inclusiv pierderea conexiunii), editare locație cu „Testează acum”, import cu erori, statistici și export.
-- **Build**: `go run ./tools/release` (fără dependență de `make`) / GitHub Actions produce `netwatch-windows-amd64.exe`, `netwatch-linux-amd64`, `netwatch-linux-arm64`, cu sume de control.
+- **Build**: `go run ./tools/release` (fără dependență de `make`) / GitHub Actions produce `sismon-windows-amd64.exe`, `sismon-linux-amd64`, `sismon-linux-arm64`, cu sume de control.

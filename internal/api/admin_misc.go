@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/settings"
+	"sismon/internal/apperr"
+	"sismon/internal/settings"
 )
 
 func (a *admin) getSettings(w http.ResponseWriter, r *http.Request) {

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/store"
 )
 
 // Identity is the application branding, stored in meta "identity".
@@ -19,7 +19,7 @@ type Identity struct {
 
 // DefaultIdentity is used until the administrator changes it.
 func DefaultIdentity() Identity {
-	return Identity{Name: "NetWatch", Subtitle: "NETWORK MONITOR", ReportTitle: "Raport de disponibilitate"}
+	return Identity{Name: "SisMon", Subtitle: "NETWORK MONITOR", ReportTitle: "Raport de disponibilitate"}
 }
 
 // LoadIdentity reads the identity, falling back to the default.

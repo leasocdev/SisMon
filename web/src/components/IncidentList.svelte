@@ -19,7 +19,7 @@
           <th scope="col">Confirmat</th>
           <th scope="col">Sfârșit</th>
           <th scope="col">Durată</th>
-          <th scope="col">Motiv</th>
+          <th scope="col">Stare</th>
         </tr>
       </thead>
       <tbody>

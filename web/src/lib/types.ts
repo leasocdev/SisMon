@@ -1,4 +1,4 @@
-// JSON shapes of the NetWatch API (field names mirror the Go json tags).
+// JSON shapes of the SisMon API (field names mirror the Go json tags).
 
 export type State = 'up' | 'down' | 'degraded' | 'unknown' | 'error';
 
@@ -137,13 +137,6 @@ export interface IncidentRow {
 export interface Report {
   from: number;
   to: number;
-  summary: {
-    availability: number | null;
-    coverage: number | null;
-    incidents: number;
-    down_s: number;
-    mttr_s: number | null;
-  };
   devices: DeviceRow[];
   locations: LocationRow[];
   incidents: IncidentRow[];
@@ -154,7 +147,13 @@ export interface Report24 {
   to: number;
   locations: number;
   affected_now: number;
-  current: { location_id: number; location: string; device_id: number; device: string; since: number }[];
+  /** Locații indisponibile acum, cele mai vechi căderi primele. */
+  current: {
+    location_id: number;
+    location: string;
+    since: number;
+    devices: { id: number; name: string; error_code: string; since: number }[];
+  }[];
   incidents: IncidentRow[];
   minor_incidents: IncidentRow[];
 }
@@ -197,6 +196,9 @@ export interface AdminDevice {
   is_primary: boolean;
   sort_order: number;
   overrides: Overrides;
+  disabled: boolean;
+  disabled_at: number | null;
+  disabled_until: number | null;
 }
 
 export interface AdminLocation {
@@ -217,6 +219,9 @@ export interface DeviceInput {
   kind: string;
   is_primary: boolean;
   overrides: Overrides;
+  /** Not monitored while true; `disabled_until` (ms) re-enables it automatically. */
+  disabled: boolean;
+  disabled_until: number | null;
 }
 
 export interface LocationInput {

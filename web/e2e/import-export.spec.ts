@@ -59,7 +59,7 @@ test.describe('Import și export', () => {
     const d1 = page.waitForEvent('download');
     await csvLink.click();
     const csv = await d1;
-    expect(csv.suggestedFilename()).toMatch(/^netwatch-statistici-\d{8}-\d{4}\.csv$/);
+    expect(csv.suggestedFilename()).toMatch(/^sismon-statistici-\d{8}-\d{4}\.csv$/);
     expect(readFileSync(await csv.path()).subarray(0, 3).toString('hex')).toBe('efbbbf');
     const d2 = page.waitForEvent('download');
     await page.getByRole('link', { name: 'PDF' }).click();

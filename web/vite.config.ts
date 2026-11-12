@@ -8,7 +8,7 @@ const outDir = fileURLToPath(new URL('../internal/webui/dist', import.meta.url))
 
 // emptyOutDir removes the tracked .gitkeep; put it back after each build.
 const keepGitkeep: Plugin = {
-  name: 'netwatch-gitkeep',
+  name: 'sismon-gitkeep',
   apply: 'build',
   closeBundle() {
     writeFileSync(outDir + '/.gitkeep', '');

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 func chunk(typ string, data []byte) []byte {

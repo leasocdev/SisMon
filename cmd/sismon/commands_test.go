@@ -14,9 +14,9 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"netwatch/internal/auth"
-	"netwatch/internal/lockfile"
-	"netwatch/internal/store"
+	"sismon/internal/auth"
+	"sismon/internal/lockfile"
+	"sismon/internal/store"
 )
 
 func cli(t *testing.T, stdin string, args ...string) (int, string) {
@@ -39,7 +39,7 @@ func TestSetPasswordNonInteractive(t *testing.T) {
 	if code != 0 {
 		t.Fatal(code, out)
 	}
-	st, err := store.Open(t.Context(), filepath.Join(dir, "netwatch.db"), store.Options{})
+	st, err := store.Open(t.Context(), filepath.Join(dir, "sismon.db"), store.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestOutputUTF8Redirected(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
-	exe := filepath.Join(t.TempDir(), "netwatch")
+	exe := filepath.Join(t.TempDir(), "sismon")
 	if runtime.GOOS == "windows" {
 		exe += ".exe"
 	}
@@ -137,7 +137,7 @@ func TestCmdDemoStarts(t *testing.T) {
 	if !st.Demo || len(st.Locations) != 12 {
 		t.Fatalf("%+v", st)
 	}
-	if !strings.Contains(out.String(), "netwatch-demo") {
+	if !strings.Contains(out.String(), "sismon-demo") {
 		t.Fatalf("password not printed: %s", out.String())
 	}
 }

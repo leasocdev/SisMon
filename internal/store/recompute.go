@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"time"
 
-	"netwatch/internal/state"
+	"sismon/internal/state"
 )
 
-// LocationMembers returns the active devices of a location as state members.
+// LocationMembers returns the active, enabled devices of a location as state members.
 func LocationMembers(ctx context.Context, q Querier, locationID int64) ([]state.Member, error) {
 	rows, err := q.QueryContext(ctx, `SELECT d.is_primary, COALESCE(s.state,'unknown') FROM devices d
-		LEFT JOIN device_status s ON s.device_id=d.id WHERE d.location_id=? AND d.archived_at IS NULL`, locationID)
+		LEFT JOIN device_status s ON s.device_id=d.id WHERE d.location_id=? AND d.archived_at IS NULL AND d.disabled_at IS NULL`, locationID)
 	if err != nil {
 		return nil, wrap("location members", err)
 	}

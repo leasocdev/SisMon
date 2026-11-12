@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/state"
-	"netwatch/internal/store"
+	"sismon/internal/state"
+	"sismon/internal/store"
 )
 
 const (
@@ -230,6 +230,9 @@ func (h *Hub) Load(ctx context.Context, st *store.Store) error {
 	for _, l := range locs {
 		v := LocationView{ID: l.ID, Name: l.Name, Address: l.Address, Notes: l.Notes, Lat: l.Lat, Lon: l.Lon, SortOrder: l.SortOrder, Devices: []DeviceView{}}
 		for _, d := range l.Devices {
+			if d.Disabled { // hidden from monitoring until enabled again
+				continue
+			}
 			v.Devices = append(v.Devices, DeviceViewFrom(d, stats[d.ID]))
 		}
 		r := state.Location(members(v.Devices))

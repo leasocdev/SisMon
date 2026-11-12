@@ -142,3 +142,39 @@ test('sesiune expirată în editor păstrează modificările', async ({ page, co
   await page.getByRole('button', { name: 'Salvează' }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Locația a fost salvată.' })).toBeVisible();
 });
+
+test('dezactivare temporară a unui echipament', async ({ page }) => {
+  const api = await adminApi();
+  const id = await createLocation(api, { name: 'Dezactivare E2E', devices: [{ name: 'Router', host: '10.0.9.1' }, { name: 'Camere', host: '10.0.9.2' }] });
+  try {
+    await login(page);
+    await page.goto(`/administrare/locatie/${id}`);
+    const row = page.locator('.device-row').nth(1);
+    await row.getByLabel('Dezactivat').check();
+    await row.getByRole('button', { name: '+1 zi' }).click();
+    await expect(row.getByRole('status')).toContainText('Se reactivează automat la');
+    await page.getByRole('button', { name: 'Salvează' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Locația a fost salvată.' })).toBeVisible();
+
+    await page.goto('/administrare');
+    await expect(page.locator('.loc-list li', { hasText: 'Dezactivare E2E' })).toContainText('1 dezactivat');
+
+    await page.goto('/');
+    const card = page.locator('.loc-card', { hasText: 'Dezactivare E2E' });
+    await expect(card).toContainText('Router');
+    await expect(card).not.toContainText('Camere');
+
+    // Reactivare manuală: echipamentul revine pe card.
+    await page.goto(`/administrare/locatie/${id}`);
+    await expect(page.locator('.device-row').nth(1).getByLabel('Dezactivat')).toBeChecked();
+    await page.locator('.device-row').nth(1).getByLabel('Dezactivat').uncheck();
+    await page.getByRole('button', { name: 'Salvează' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Locația a fost salvată.' })).toBeVisible();
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Compact' }).click();
+    await expect(page.locator('.loc-card', { hasText: 'Dezactivare E2E' })).toContainText('Camere');
+  } finally {
+    await api.send('DELETE', `/api/admin/locations/${id}`);
+    await api.dispose();
+  }
+});

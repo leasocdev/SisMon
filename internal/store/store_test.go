@@ -11,7 +11,7 @@ import (
 
 func openTemp(t *testing.T) *Store {
 	t.Helper()
-	s, err := Open(context.Background(), filepath.Join(t.TempDir(), "netwatch.db"), Options{})
+	s, err := Open(context.Background(), filepath.Join(t.TempDir(), "sismon.db"), Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestBeforeMigrateCalled(t *testing.T) {
 		t.Fatal(err)
 	}
 	s.Close()
-	if from != 0 || to != 1 {
+	if from != 0 || to != SchemaVersion {
 		t.Fatalf("callback (%d,%d)", from, to)
 	}
 }

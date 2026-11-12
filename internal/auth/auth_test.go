@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/store"
+	"sismon/internal/store"
 )
 
 func TestPasswordRoundTrip(t *testing.T) {

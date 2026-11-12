@@ -27,7 +27,7 @@ func TestConfigDefaults(t *testing.T) {
 
 func TestConfigFlagsOverrideToml(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "netwatch.toml"), []byte("listen = \":9000\"\ntrusted_proxy = [\"10.0.0.5\"]\n"), 0o600)
+	os.WriteFile(filepath.Join(dir, "sismon.toml"), []byte("listen = \":9000\"\ntrusted_proxy = [\"10.0.0.5\"]\n"), 0o600)
 	c, err := load(t, "--data", dir)
 	if err != nil || c.Listen != ":9000" || len(c.TrustedProxies) != 1 {
 		t.Fatalf("%+v %v", c, err)
@@ -49,7 +49,7 @@ func TestConfigTLSFilesRequiresPaths(t *testing.T) {
 	if c, err := load(t, "--data", dir, "--tls", "auto"); err != nil || c.TLS != "auto" {
 		t.Fatal(err)
 	}
-	os.WriteFile(filepath.Join(dir, "netwatch.toml"), []byte("listen = "), 0o600)
+	os.WriteFile(filepath.Join(dir, "sismon.toml"), []byte("listen = "), 0o600)
 	if _, err := load(t, "--data", dir); err == nil {
 		t.Fatal("broken toml accepted")
 	}

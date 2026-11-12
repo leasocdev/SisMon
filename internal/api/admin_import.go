@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/importer"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/importer"
 )
 
 // MaxUpload bounds multipart uploads (import files and the logo).

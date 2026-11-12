@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/config"
-	"netwatch/internal/monitor/icmp"
+	"sismon/internal/config"
+	"sismon/internal/monitor/icmp"
 )
 
 func okPinger() icmp.Pinger {

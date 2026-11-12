@@ -35,7 +35,7 @@ func EnsureSelfSigned(dir string, hosts []string) (string, string, error) {
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 120))
 	tpl := &x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "NetWatch", Organization: []string{"NetWatch"}},
+		Subject:      pkix.Name{CommonName: "SisMon", Organization: []string{"SisMon"}},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().AddDate(5, 0, 0),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

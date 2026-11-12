@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 const (

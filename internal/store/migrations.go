@@ -9,8 +9,11 @@ import (
 //go:embed schema_v1.sql
 var schemaV1 string
 
+//go:embed schema_v2.sql
+var schemaV2 string
+
 // migrations[i] upgrades the schema from version i to i+1.
-var migrations = []string{schemaV1}
+var migrations = []string{schemaV1, schemaV2}
 
 func (s *Store) migrate(ctx context.Context, opt Options) error {
 	if _, err := s.DB.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL)`); err != nil {

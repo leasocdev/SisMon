@@ -158,14 +158,7 @@
   {#if loading && !report}<p class="muted">Se încarcă…</p>{/if}
 
   {#if report}
-    <section class="kpis" aria-label="Indicatori" class:dim={loading}>
-      <div class="kpi card kpi-availability"><span class="l">Disponibilitate</span><span class="v">{fmtPct(report.summary.availability)}</span></div>
-      <div class="kpi card kpi-coverage"><span class="l">Acoperire</span><span class="v">{fmtPct(report.summary.coverage)}</span></div>
-      <div class="kpi card kpi-incidents"><span class="l">Incidente</span><span class="v">{report.summary.incidents}</span></div>
-      <div class="kpi card kpi-down"><span class="l">Timp indisponibil cumulat</span><span class="v">{fmtDuration(report.summary.down_s)}</span></div>
-      <div class="kpi card kpi-mttr"><span class="l"><abbr title="Mean Time To Repair — timpul mediu de remediere: durata medie a unui incident, de la apariția căderii până la revenirea echipamentului">MTTR</abbr> · timp mediu de remediere</span><span class="v">{report.summary.mttr_s == null ? '—' : fmtDuration(report.summary.mttr_s)}</span></div>
-    </section>
-
+    <div class="results" class:dim={loading} aria-busy={loading}>
     <h2>Locații</h2>
     <table class="locs">
       <thead><tr><th scope="col">Locație</th><th scope="col">Disponibilitate</th><th scope="col">Acoperire</th><th scope="col">Stări în perioadă</th></tr></thead>
@@ -199,6 +192,7 @@
 
     <h2>Incidente</h2>
     <IncidentList incidents={report.incidents} />
+    </div>
   {/if}
 </div>
 
@@ -249,28 +243,9 @@
     max-width: 320px;
     font-weight: 400;
   }
-  .kpis {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 10px;
-    margin: 14px 0;
-  }
-  .kpis.dim {
+  /* Rezultatele vechi rămân vizibile, estompate, cât se încarcă cele noi. */
+  .results.dim {
     opacity: 0.6;
-  }
-  .kpi {
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .kpi .l {
-    color: var(--muted);
-    font-size: 0.88em;
-  }
-  .kpi .v {
-    font-size: 1.6em;
-    font-weight: 700;
   }
   h2 {
     font-size: 1.1em;

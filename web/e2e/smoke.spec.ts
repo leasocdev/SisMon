@@ -2,7 +2,7 @@ import { expect, test } from './fixtures';
 
 test('aplicația se încarcă pe paginile principale', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle(/NetWatch/);
+  await expect(page).toHaveTitle(/SisMon/);
   await expect(page.getByRole('navigation', { name: 'Navigare principală' })).toContainText('Monitorizare');
   await expect(page.getByRole('status').first()).toContainText('Conectat');
 

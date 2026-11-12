@@ -1,7 +1,7 @@
 import { expect, locationId, setHost, test, waitState } from './fixtures';
 
 test.describe('Statistici', () => {
-  test('indicatori și tabel după o cădere', async ({ page }) => {
+  test('tabele după o cădere, fără carduri de rezumat', async ({ page }) => {
     await page.goto('/');
     await waitState(page, 'Cahul', '✓ Funcțională');
     await setHost('10.0.1.1', 'timeout');
@@ -12,8 +12,8 @@ test.describe('Statistici', () => {
     const row = page.locator('table.devices tbody tr', { hasText: 'Cahul' });
     await expect(row).toBeVisible();
     await expect(row.locator('td.incidents')).not.toHaveText('0');
-    await expect(page.locator('.kpi-incidents .v')).not.toHaveText('0');
-    await expect(page.locator('.kpi-availability .v')).toHaveText(/^\d{1,3},\d{2}%$/);
+    await expect(page.locator('.kpis')).toHaveCount(0);
+    await expect(page.locator('table.locs tbody tr', { hasText: 'Cahul' }).locator('td').nth(1)).toHaveText(/^\d{1,3},\d{2}%$/);
   });
 
   test('filtrele sunt păstrate în URL', async ({ page }) => {

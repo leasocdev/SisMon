@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/crypto/argon2"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 const (

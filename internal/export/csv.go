@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"netwatch/internal/stats"
-	"netwatch/internal/store"
+	"sismon/internal/stats"
+	"sismon/internal/store"
 )
 
 // Column titles shared by the CSV and XLSX statistics exports.
@@ -15,7 +15,7 @@ var (
 	deviceHeader = []string{"Locație", "Echipament", "Host", "Tip", "Primar", "Disponibilitate (%)", "Acoperire (%)",
 		"Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)", "Latență medie (ms)", "Pierderi (%)", "Incidente", "MTTR (min)"}
 	locationHeader = []string{"Locație", "Disponibilitate (%)", "Acoperire (%)", "Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)"}
-	incidentHeader = []string{"Locație", "Echipament", "Început", "Confirmat", "Sfârșit", "Durată (min)", "Motiv"}
+	incidentHeader = []string{"Locație", "Echipament", "Început", "Confirmat", "Sfârșit", "Durată (min)", "Stare"}
 	locationsCols  = []string{"Locație", "Adresă", "Latitudine", "Longitudine", "Echipament", "Host", "Tip", "Primar", "Observații"}
 )
 

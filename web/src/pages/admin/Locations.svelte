@@ -78,6 +78,10 @@
       <span class="handle" draggable={!filtering} ondragstart={() => (dragFrom = i)} aria-hidden="true" title="Trageți pentru a reordona">⠿</span>
       <a href="/administrare/locatie/{l.id}">{l.name}</a>
       <span class="muted">{l.devices.length} {l.devices.length === 1 ? 'echipament' : 'echipamente'}</span>
+      {#if l.devices.some((d) => d.disabled)}
+        {@const off = l.devices.filter((d) => d.disabled).length}
+        <span class="off-tag" title="Echipamente care nu se monitorizează temporar">{off} {off === 1 ? 'dezactivat' : 'dezactivate'}</span>
+      {/if}
       {#if lv}<StatusBadge state={lv.state} size="small" />{/if}
       <span class="spacer"></span>
       <button type="button" onclick={() => move(i, i - 1)} disabled={i === 0 || filtering || busy} aria-label="Mută în sus">↑</button>
@@ -87,6 +91,12 @@
 </ul>
 
 <style>
+  .off-tag {
+    border: 1px dashed var(--muted);
+    border-radius: 3px;
+    padding: 0 6px;
+    font-size: 0.85em;
+  }
   .head {
     display: flex;
     justify-content: space-between;

@@ -8,13 +8,13 @@ import (
 	"net/http"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/auth"
-	"netwatch/internal/jobs"
-	"netwatch/internal/live"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/auth"
+	"sismon/internal/jobs"
+	"sismon/internal/live"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 // Monitor is the part of the monitoring service the API uses.
@@ -129,7 +129,7 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 				return
 			}
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-			io.WriteString(w, "NetWatch API "+d.Version+"\n")
+			io.WriteString(w, "SisMon API "+d.Version+"\n")
 		})
 	}
 	return recoverer(secure(accessLog(mux)))

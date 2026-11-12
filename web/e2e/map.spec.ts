@@ -66,7 +66,8 @@ test.describe('Hartă', () => {
       await page.clock.install();
       await control('/tiles', { ok: false });
       await page.goto('/harta');
-      await expect(page.locator('path.contour').first()).toBeAttached({ timeout: 15_000 });
+      // 3 reîncercări eșalonate per dală (≈ 5–12 s) înainte de trecerea la contururi.
+      await expect(page.locator('path.contour').first()).toBeAttached({ timeout: 25_000 });
       await expect(page.locator('.fallback-note')).toBeVisible();
       await control('/tiles', { ok: true });
       await page.clock.fastForward(61_000);

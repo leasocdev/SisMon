@@ -26,9 +26,9 @@ test.describe('Administrare — pagini', () => {
     await page.getByLabel('Denumirea aplicației').fill('Dispecerat Test');
     await page.getByRole('button', { name: 'Salvează' }).click();
     await expect(page.locator('.hdr .name')).toHaveText('Dispecerat Test');
-    await page.getByLabel('Denumirea aplicației').fill('NetWatch');
+    await page.getByLabel('Denumirea aplicației').fill('SisMon');
     await page.getByRole('button', { name: 'Salvează' }).click();
-    await expect(page.locator('.hdr .name')).toHaveText('NetWatch');
+    await expect(page.locator('.hdr .name')).toHaveText('SisMon');
   });
 
   test('backup manual', async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe('Administrare — pagini', () => {
     await expect(first).toContainText('manual');
     const href = await first.getByRole('link', { name: 'Descarcă' }).getAttribute('href');
     expect(href).toMatch(/^\/api\/admin\/backups\/.+\.db$/);
-    await expect(page.getByText('netwatch restore')).toBeVisible();
+    await expect(page.getByText('sismon restore')).toBeVisible();
   });
 
   test('jurnal audit', async ({ page }) => {
@@ -58,7 +58,7 @@ test.describe('Administrare — pagini', () => {
     await login(page);
     await page.goto('/administrare/diagnostic');
     await expect(page.locator('.diag')).toContainText('Simulat');
-    await expect(page.locator('.diag')).toContainText('1.5.0');
+    await expect(page.locator('.diag')).toContainText('1.6.0');
   });
 
   test('despre', async ({ page }) => {

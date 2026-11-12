@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/stats"
+	"sismon/internal/stats"
 )
 
 func pages(b []byte) int {

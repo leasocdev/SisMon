@@ -17,19 +17,19 @@ import (
 
 	"golang.org/x/term"
 
-	"netwatch/internal/app"
-	"netwatch/internal/apperr"
-	"netwatch/internal/auth"
-	"netwatch/internal/config"
-	"netwatch/internal/fsown"
-	"netwatch/internal/jobs"
-	"netwatch/internal/lockfile"
-	"netwatch/internal/restore"
-	"netwatch/internal/settings"
-	"netwatch/internal/svc"
+	"sismon/internal/app"
+	"sismon/internal/apperr"
+	"sismon/internal/auth"
+	"sismon/internal/config"
+	"sismon/internal/fsown"
+	"sismon/internal/jobs"
+	"sismon/internal/lockfile"
+	"sismon/internal/restore"
+	"sismon/internal/settings"
+	"sismon/internal/svc"
 )
 
-const lockedMsg = "Directorul de date este folosit de o instanță activă. Opriți serviciul (netwatch stop) sau folosiți pagina de administrare."
+const lockedMsg = "Directorul de date este folosit de o instanță activă. Opriți serviciul (sismon stop) sau folosiți pagina de administrare."
 
 func loadConfig(name string, args []string, stderr io.Writer) (config.Config, bool) {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
@@ -91,7 +91,7 @@ func cmdService(action string, args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			return fail(stderr, err)
 		}
-		fmt.Fprintln(stdout, "Serviciul NetWatch:", st)
+		fmt.Fprintln(stdout, "Serviciul SisMon:", st)
 		return 0
 	}
 	if action == "install" {
@@ -102,7 +102,7 @@ func cmdService(action string, args []string, stdout, stderr io.Writer) int {
 	if err := svc.Control(action, cfg); err != nil {
 		return fail(stderr, fmt.Errorf("%s: %w (rulați ca administrator/root?)", action, err))
 	}
-	msgs := map[string]string{"install": "Serviciul a fost instalat. Porniți-l cu: netwatch start",
+	msgs := map[string]string{"install": "Serviciul a fost instalat. Porniți-l cu: sismon start",
 		"uninstall": "Serviciul a fost eliminat.", "start": "Serviciul a pornit.", "stop": "Serviciul a fost oprit."}
 	fmt.Fprintln(stdout, msgs[action])
 	return 0
@@ -230,7 +230,7 @@ func cmdRestore(args []string, stdout, stderr io.Writer) int {
 		file = fs.Arg(0)
 	}
 	if file == "" {
-		fmt.Fprintln(stderr, "Indicați fișierul de backup: netwatch restore FIȘIER")
+		fmt.Fprintln(stderr, "Indicați fișierul de backup: sismon restore FIȘIER")
 		return 2
 	}
 	if err := restore.Verify(file); err != nil {

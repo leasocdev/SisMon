@@ -48,7 +48,7 @@
   {#if live.health.backup_error}<p class="notice danger">{live.health.backup_error}</p>{/if}
   <p class="muted">
     Backup-ul automat rulează zilnic (ora din Setări monitorizare); se păstrează 7 zilnice, 4 săptămânale și 12 lunare.
-    Restaurarea se face pe server: <code>netwatch restore FIȘIER</code>
+    Restaurarea se face pe server: <code>sismon restore FIȘIER</code>
   </p>
   <button type="button" class="primary" onclick={create} disabled={busy}>{busy ? 'Se creează…' : 'Creează backup acum'}</button>
   {#if created}<span class="ok" role="status">{created}</span>{/if}

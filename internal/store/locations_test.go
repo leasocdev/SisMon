@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/settings"
-	"netwatch/internal/state"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/settings"
+	"sismon/internal/state"
 )
 
 var now = time.Unix(1_800_000_000, 0)

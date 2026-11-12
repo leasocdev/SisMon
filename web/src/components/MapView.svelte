@@ -5,7 +5,7 @@
   import { loadLeaflet } from '../lib/leaflet';
   import { live } from '../lib/live.svelte';
   import { severity, STATE_LABEL, STATE_SYMBOL, stateText } from '../lib/status';
-  import { TileHealth } from '../lib/tilehealth';
+  import { retryDelay, TILE_RETRIES, TileHealth } from '../lib/tilehealth';
   import type { LocationView, State } from '../lib/types';
 
   let { fill = true }: { fill?: boolean } = $props();
@@ -173,9 +173,20 @@
     }
   }
 
+  // Pending tile retries. They are cancelled when the tile layer goes away:
+  // a late retry of a removed tile would report into the fresh TileHealth
+  // after recovery and switch straight back to the contours.
+  const retries = new Set<ReturnType<typeof setTimeout>>();
+
+  function cancelRetries() {
+    for (const t of retries) clearTimeout(t);
+    retries.clear();
+  }
+
   function enterFallback() {
     if (fallback) return;
     fallback = true;
+    cancelRetries();
     map.removeLayer(tiles);
     outline = L.geoJSON(contours as GeoJSON.FeatureCollection, {
       style: { className: 'contour', weight: 1, color: '#888', fillColor: '#888', fillOpacity: 0.08 },
@@ -189,8 +200,10 @@
     outline?.remove();
     outline = null;
     health.reset();
+    // addTo rebuilds every tile at the rounded zoom. No redraw(): in Leaflet
+    // 1.9 it skips the rounding, so a fractional zoom (zoomSnap 0.1) asked
+    // for tiles like /tiles/8.7/… that always fail and re-entered the fallback.
     tiles.addTo(map);
-    tiles.redraw();
   }
 
   function probe() {
@@ -213,13 +226,21 @@
         maxZoom: 18,
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       });
-      tiles.on('tileload', () => health.record(true, Date.now()));
+      tiles.on('tileload', (e: Leaflet.TileEvent) => {
+        if (!fallback && e.tile.isConnected) health.record(true, Date.now());
+      });
       tiles.on('tileerror', (e: Leaflet.TileErrorEvent) => {
         const img = e.tile as HTMLImageElement;
-        if (!img.dataset.retry) {
-          img.dataset.retry = '1';
-          const src = img.src;
-          setTimeout(() => (img.src = src.split('?')[0] + '?retry=1'), 2000);
+        if (fallback || !img.isConnected) return; // a tile of a layer that is gone
+        const attempt = Number(img.dataset.retry ?? 0) + 1;
+        if (attempt <= TILE_RETRIES) {
+          img.dataset.retry = String(attempt);
+          const src = img.src.split('?')[0];
+          const t = setTimeout(() => {
+            retries.delete(t);
+            if (img.isConnected) img.src = `${src}?retry=${attempt}`;
+          }, retryDelay(attempt, Math.random()));
+          retries.add(t);
           return;
         }
         health.record(false, Date.now());
@@ -286,6 +307,7 @@
       if (rafId) cancelAnimationFrame(rafId);
       ro.disconnect();
       if (timer) clearInterval(timer);
+      cancelRetries();
       map?.stop();
       map?.off();
       map?.remove();

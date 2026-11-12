@@ -2,5 +2,5 @@
 
 package config
 
-// DefaultDataDir is /var/lib/netwatch.
-func DefaultDataDir() string { return "/var/lib/netwatch" }
+// DefaultDataDir is /var/lib/sismon.
+func DefaultDataDir() string { return "/var/lib/sismon" }

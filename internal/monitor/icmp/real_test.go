@@ -18,8 +18,8 @@ func realPinger(t *testing.T) Pinger {
 		t.Skipf("no pinger: %v", err)
 	}
 	if p.Mode() == "unavailable" {
-		if os.Getenv("NETWATCH_REQUIRE_ICMP") != "" {
-			t.Fatal("ICMP unavailable but NETWATCH_REQUIRE_ICMP is set")
+		if os.Getenv("SISMON_REQUIRE_ICMP") != "" {
+			t.Fatal("ICMP unavailable but SISMON_REQUIRE_ICMP is set")
 		}
 		t.Skip("ICMP unavailable (permissions)")
 	}
@@ -38,7 +38,7 @@ func TestRealLoopbackV6(t *testing.T) {
 	p := realPinger(t)
 	r := p.Ping(context.Background(), netip.MustParseAddr("::1"), 1, time.Second)
 	if r.Received < 1 {
-		if os.Getenv("NETWATCH_REQUIRE_ICMP6") != "" {
+		if os.Getenv("SISMON_REQUIRE_ICMP6") != "" {
 			t.Fatalf("IPv6 loopback did not answer: %+v", r)
 		}
 		t.Skipf("IPv6 loopback not answering here: %+v", r)
@@ -65,11 +65,11 @@ func TestFakeAndContextCancel(t *testing.T) {
 }
 
 // TestRealMode pins the pinger implementation CI expects on a runner
-// (NETWATCH_EXPECT_ICMP_MODE=windows|linux-unprivileged|linux-raw).
+// (SISMON_EXPECT_ICMP_MODE=windows|linux-unprivileged|linux-raw).
 func TestRealMode(t *testing.T) {
-	want := os.Getenv("NETWATCH_EXPECT_ICMP_MODE")
+	want := os.Getenv("SISMON_EXPECT_ICMP_MODE")
 	if want == "" {
-		t.Skip("NETWATCH_EXPECT_ICMP_MODE not set")
+		t.Skip("SISMON_EXPECT_ICMP_MODE not set")
 	}
 	p, err := New()
 	if err != nil {

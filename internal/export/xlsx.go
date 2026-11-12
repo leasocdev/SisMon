@@ -5,8 +5,8 @@ import (
 
 	"github.com/xuri/excelize/v2"
 
-	"netwatch/internal/stats"
-	"netwatch/internal/store"
+	"sismon/internal/stats"
+	"sismon/internal/store"
 )
 
 type sheet struct {

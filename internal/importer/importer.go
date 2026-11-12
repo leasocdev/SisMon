@@ -16,9 +16,9 @@ import (
 
 	"github.com/xuri/excelize/v2"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/settings"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/settings"
 )
 
 const (

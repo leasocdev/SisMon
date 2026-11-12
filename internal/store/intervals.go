@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"netwatch/internal/state"
+	"sismon/internal/state"
 )
 
 // Entity is the kind of entity a state interval belongs to.

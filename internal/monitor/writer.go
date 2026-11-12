@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/live"
-	"netwatch/internal/settings"
-	"netwatch/internal/state"
-	"netwatch/internal/store"
+	"sismon/internal/live"
+	"sismon/internal/settings"
+	"sismon/internal/state"
+	"sismon/internal/store"
 )
 
 type devInfo struct {
@@ -79,6 +79,9 @@ func (w *Writer) Reload(ctx context.Context) error {
 	defer w.mu.Unlock()
 	next := map[int64]*devInfo{}
 	for _, d := range devs {
+		if d.Disabled {
+			continue
+		}
 		s := stats[d.ID]
 		s.DeviceID = d.ID
 		if s.State == "" {
@@ -185,7 +188,7 @@ func (w *Writer) Flush(ctx context.Context) error {
 // batch transaction, so results of a configuration that changed (or was
 // archived) after the check started are dropped even before Reload runs.
 func activeRevs(ctx context.Context, tx *sql.Tx) (map[int64]int64, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT id,rev FROM devices WHERE archived_at IS NULL`)
+	rows, err := tx.QueryContext(ctx, `SELECT id,rev FROM devices WHERE archived_at IS NULL AND disabled_at IS NULL`)
 	if err != nil {
 		return nil, err
 	}

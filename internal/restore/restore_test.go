@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/app"
-	"netwatch/internal/auth"
-	"netwatch/internal/domain"
-	"netwatch/internal/jobs"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/app"
+	"sismon/internal/auth"
+	"sismon/internal/domain"
+	"sismon/internal/jobs"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 func addLocation(t *testing.T, st *store.Store, name string) {
@@ -59,13 +59,13 @@ func TestRestoreRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := names(t, filepath.Join(dir, "netwatch.db")); got != "X" {
+	if got := names(t, filepath.Join(dir, "sismon.db")); got != "X" {
 		t.Fatalf("restored %q", got)
 	}
 	if got := names(t, filepath.Join(dir, "backups", pre.Name)); got != "X,Y" || pre.Kind != "pre-restore" {
 		t.Fatalf("pre-restore %q %+v", got, pre)
 	}
-	st2, _ := store.Open(ctx, filepath.Join(dir, "netwatch.db"), store.Options{})
+	st2, _ := store.Open(ctx, filepath.Join(dir, "sismon.db"), store.Options{})
 	defer st2.Close()
 	var n int
 	st2.DB.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&n)
@@ -86,7 +86,7 @@ func TestRestoreRejectsNewerSchema(t *testing.T) {
 	if _, err := Restore(ctx, dir, filepath.Join(srcDir, "n.db")); err == nil {
 		t.Fatal("newer schema accepted")
 	}
-	if got := names(t, filepath.Join(dir, "netwatch.db")); got != "Curent" {
+	if got := names(t, filepath.Join(dir, "sismon.db")); got != "Curent" {
 		t.Fatal("current database changed")
 	}
 }
@@ -99,7 +99,7 @@ func TestRestoreRejectsCorrupt(t *testing.T) {
 	bad := filepath.Join(t.TempDir(), "bad.db")
 	os.WriteFile(bad, []byte("nu sunt o bază de date"), 0o600)
 	_, err := Restore(ctx, dir, bad)
-	if err == nil || !strings.Contains(err.Error(), "Fișierul nu este o bază NetWatch validă.") {
+	if err == nil || !strings.Contains(err.Error(), "Fișierul nu este o bază SisMon validă.") {
 		t.Fatal(err)
 	}
 	if _, err := Restore(ctx, dir, filepath.Join(dir, "lipsa.db")); err == nil {

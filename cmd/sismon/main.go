@@ -1,4 +1,4 @@
-// Command netwatch is the NetWatch network monitor.
+// Command sismon is the SisMon network monitor.
 package main
 
 import (
@@ -7,11 +7,11 @@ import (
 	"os"
 	_ "time/tzdata"
 
-	"netwatch/internal/svc"
-	"netwatch/internal/version"
+	"sismon/internal/svc"
+	"sismon/internal/version"
 )
 
-const usage = `Utilizare: netwatch <comandă> [opțiuni]
+const usage = `Utilizare: sismon <comandă> [opțiuni]
 
 Comenzi:
   run              Pornește monitorizarea în prim-plan
@@ -42,7 +42,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	cmd, rest := args[0], args[1:]
 	switch cmd {
 	case "version", "--version", "-v":
-		fmt.Fprintf(stdout, "NetWatch %s\n", version.Version)
+		fmt.Fprintf(stdout, "SisMon %s\n", version.Version)
 		return 0
 	case "help", "--help", "-h":
 		fmt.Fprint(stdout, usage)

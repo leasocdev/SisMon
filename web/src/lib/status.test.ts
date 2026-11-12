@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { errorText, filterLocations, fmtLatency, fmtPct, pendingText, sortLocations, stateText, totals } from './status';
+import { cardDevices, errorText, filterLocations, fmtLatency, fmtPct, pendingText, sortLocations, stateText, totals } from './status';
 import type { LocationView, State } from './types';
 
 function loc(id: number, name: string, state: State, sort_order = 0): LocationView {
@@ -72,5 +72,31 @@ describe('filterLocations', () => {
     expect(filterLocations(all, new Set(), 'chisinau').map((x) => x.id)).toEqual([1]);
     expect(filterLocations(all, new Set(), '10.0.2.2').map((x) => x.id)).toEqual([3]);
     expect(filterLocations(all, new Set(), 'BALTI').map((x) => x.id)).toEqual([3]);
+  });
+});
+
+describe('cardDevices', () => {
+  const dev = (name: string, state: State, is_primary = false, pending: State | '' = '') => ({ name, state, is_primary, pending });
+
+  it('problemele primele, restul în ordinea configurată', () => {
+    const list = [dev('a', 'up'), dev('b', 'up', false, 'down'), dev('c', 'down'), dev('d', 'up'), dev('e', 'unknown')];
+    expect(cardDevices('down', list, false).shown.map((d) => d.name)).toEqual(['c', 'e', 'b', 'a', 'd']);
+  });
+
+  it('modul compact: locație funcțională → doar primarele și cele cu probleme', () => {
+    const list = [dev('a', 'up', true), dev('b', 'up'), dev('c', 'up', false, 'down'), dev('d', 'up')];
+    const r = cardDevices('up', list, true);
+    expect(r.shown.map((d) => d.name)).toEqual(['c', 'a']);
+    expect(r.hidden).toBe(2);
+  });
+
+  it('modul compact nu atinge locațiile cu probleme', () => {
+    const list = [dev('a', 'up', true), dev('b', 'down')];
+    expect(cardDevices('degraded', list, true)).toEqual({ shown: [list[1], list[0]], hidden: 0 });
+  });
+
+  it('modul compact fără primare → toate echipamentele', () => {
+    const list = [dev('a', 'up'), dev('b', 'up')];
+    expect(cardDevices('up', list, true)).toEqual({ shown: list, hidden: 0 });
   });
 });

@@ -1,13 +1,17 @@
 <script lang="ts">
   import { live } from '../lib/live.svelte';
-  import { errorText, fmtLatency, pendingText, severity, STATE_SYMBOL } from '../lib/status';
-  import { fmtSince } from '../lib/time';
+  import { cardDevices, errorText, fmtLatency, pendingText, severity, STATE_SYMBOL } from '../lib/status';
   import { timelines } from '../lib/timelines.svelte';
-  import type { LocationView } from '../lib/types';
+  import type { DeviceView, LocationView } from '../lib/types';
   import MiniTimeline from './MiniTimeline.svelte';
   import StatusBadge from './StatusBadge.svelte';
 
-  let { loc, size = 'normal', timeline = true }: { loc: LocationView; size?: 'normal' | 'large'; timeline?: boolean } = $props();
+  let {
+    loc,
+    size = 'normal',
+    timeline = true,
+    compact = false,
+  }: { loc: LocationView; size?: 'normal' | 'large'; timeline?: boolean; compact?: boolean } = $props();
 
   let pulse = $state(false);
   let prevSeverity: number | null = null;
@@ -25,6 +29,16 @@
 
   const now = $derived((live.tick, live.serverNow()));
   const tl = $derived(timeline ? timelines.for(loc.id, now) : null);
+  const devs = $derived(cardDevices(loc.state, loc.devices, compact));
+
+  /** Status message shown on its own line under the device name (empty for a healthy device). */
+  function message(d: DeviceView): { text: string; cls: string } | null {
+    if (d.state === 'error') return { text: '! Eroare monitor', cls: 't-error' };
+    const p = pendingText(d);
+    if (p) return { text: p, cls: 'pending' };
+    if (d.state === 'down') return { text: errorText(d.error_code) || 'Indisponibil', cls: 't-down' };
+    return null;
+  }
 </script>
 
 <a class="loc-card card state-{loc.state} {size}" class:pulse class:stale={live.stale} href="/locatie/{loc.id}" data-id={loc.id}>
@@ -32,30 +46,34 @@
     <h3 class="name">{loc.name}</h3>
     <StatusBadge state={loc.state} stale={live.stale} size={size === 'large' ? 'large' : 'normal'} />
   </div>
-  <div class="meta">
-    {#if loc.since > 0}<span>{fmtSince(loc.since, now)}</span>{/if}
-    {#if loc.incomplete}<span class="tag">date incomplete</span>{/if}
-  </div>
+  {#if loc.incomplete}
+    <div class="meta"><span class="tag">date incomplete</span></div>
+  {/if}
   <ul class="devices">
-    {#each loc.devices as d (d.id)}
-      <li class:primary={d.is_primary}>
+    {#each devs.shown as d (d.id)}
+      {@const msg = message(d)}
+      <li class:primary={d.is_primary} class:bad={d.state !== 'up'} class="d-{d.state}">
         <span class="dev-sym t-{d.state}" aria-hidden="true">{STATE_SYMBOL[d.state]}</span>
         <span class="dname">
           {#if d.is_primary}<span class="star" title="Echipament primar">★</span><span class="sr-only">primar</span>{/if}
           {d.name}
         </span>
-        <span class="host">{d.host}</span>
-        <span class="info">
-          {#if d.state === 'error'}<span class="t-error">! Eroare monitor</span>
-          {:else if pendingText(d)}<span class="pending">{pendingText(d)}</span>
-          {:else if d.state === 'down'}<span class="t-down">{errorText(d.error_code) || 'Indisponibil'}</span>
-          {:else}{fmtLatency(d.latency_ms)}{/if}
-        </span>
+        <span class="host" class:sep={d.latency_ms != null}>{d.host}</span>
+        <span class="info">{d.latency_ms != null ? fmtLatency(d.latency_ms) : ''}</span>
+        {#if msg}<span class="msg {msg.cls}">{msg.text}</span>{/if}
       </li>
     {/each}
   </ul>
+  {#if loc.devices.length === 0}
+    <p class="more">Toate echipamentele sunt dezactivate temporar.</p>
+  {/if}
+  {#if devs.hidden > 0}
+    <p class="more">+ {devs.hidden} {devs.hidden === 1 ? 'echipament funcțional' : 'echipamente funcționale'}</p>
+  {/if}
   {#if tl}
-    <MiniTimeline segments={tl.segments} from={tl.from} to={tl.to} />
+    <div class="tl">
+      <MiniTimeline segments={tl.segments} from={tl.from} to={tl.to} />
+    </div>
   {/if}
 </a>
 
@@ -109,42 +127,50 @@
   .meta {
     display: flex;
     gap: 8px;
-    color: var(--fg);
     font-size: 0.86em;
-    min-height: 1.2em;
   }
   .tag {
     border: 1px dashed var(--muted);
     border-radius: 3px;
     padding: 0 4px;
   }
+  /* Un singur grid pentru toată lista: coloanele (nume, IP, latență) se aliniază între rânduri. */
   .devices {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+    display: grid;
+    grid-template-columns: 1.3em minmax(0, 1fr) auto auto;
+    column-gap: 8px;
+    row-gap: 3px;
     font-size: 0.9em;
   }
   .devices li {
+    grid-column: 1 / -1;
     display: grid;
-    grid-template-columns: 1.3em minmax(0, 1fr) auto auto;
-    gap: 8px;
+    grid-template-columns: subgrid;
+    row-gap: 1px;
     align-items: center;
+    padding: 2px 0;
   }
-  .host {
-    padding-right: 10px;
-    border-right: 2px solid color-mix(in srgb, var(--fg) 45%, transparent);
+  /* Rândurile cu probleme ies în evidență în interiorul cardului. */
+  .devices li.bad {
+    margin: 0 -6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--dc, var(--c-unknown)) 22%, var(--surface));
   }
-  .info {
-    min-width: 4.5em;
-    font-weight: 600;
+  .d-down {
+    --dc: var(--c-down);
+  }
+  .d-degraded {
+    --dc: var(--c-degraded);
+  }
+  .d-error {
+    --dc: var(--c-error);
   }
   .dname {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
   .star {
     color: #f2b400;
@@ -152,18 +178,46 @@
     margin-right: 2px;
   }
   .host {
+    padding-right: 10px;
+    border-right: 2px solid transparent;
     color: var(--fg);
     opacity: 0.75;
     font-family: var(--mono);
     font-size: 0.92em;
+    white-space: nowrap;
+  }
+  .host.sep {
+    border-right-color: color-mix(in srgb, var(--fg) 45%, transparent);
   }
   .info {
+    min-width: 4.5em;
+    font-weight: 600;
     text-align: right;
     white-space: nowrap;
+  }
+  /* Mesajul de stare pe rândul al doilea, sub nume — nu mai împinge numele afară. */
+  .msg {
+    grid-column: 2 / -1;
+    font-weight: 600;
+    font-size: 0.92em;
   }
   .pending {
     color: var(--c-degraded-text);
     font-style: italic;
+  }
+  /* Echipament funcțional: bifă simplă, fără cerc. */
+  .dev-sym.t-up {
+    border: none;
+    background: none;
+  }
+  .more {
+    margin: -4px 0 0;
+    font-size: 0.82em;
+    opacity: 0.75;
+  }
+  /* Bara cronologică lipită de baza cardului, la aceeași înălțime pe tot rândul. */
+  .tl {
+    margin-top: auto;
   }
   .large {
     font-size: 1.2em;

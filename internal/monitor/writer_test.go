@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/domain"
-	"netwatch/internal/live"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/state"
-	"netwatch/internal/store"
+	"sismon/internal/domain"
+	"sismon/internal/live"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/state"
+	"sismon/internal/store"
 )
 
 var base = time.UnixMilli(1_800_000_000_000)

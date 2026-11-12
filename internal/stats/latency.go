@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	"netwatch/internal/store"
+	"sismon/internal/store"
 )
 
 // Point is one bucket of the latency chart (T = bucket start, ms).

@@ -9,7 +9,7 @@
   import DeviceRow from '../../components/DeviceRow.svelte';
   import { ApiError, get, send } from '../../lib/api';
   import { confirmDialog } from '../../lib/confirm.svelte';
-  import { emptyDevice, emptyLocation, fieldPath, isDirty, moveDevice, parseCoord, toInput, toPayload } from '../../lib/editor';
+  import { emptyDevice, emptyLocation, fieldPath, isDirty, moveDevice, parseCoord, primariesDisabled, toInput, toPayload } from '../../lib/editor';
   import { beforeLeave, navigate, router } from '../../lib/router.svelte';
   import type { AdminLocation, DeviceInput, LocationInput, Settings } from '../../lib/types';
 
@@ -232,6 +232,9 @@
 
     <fieldset class="devices">
       <legend>Echipamente</legend>
+      {#if primariesDisabled(rows)}
+        <p class="notice warn">⚠ Toate echipamentele primare sunt dezactivate: locația va apărea „Fără date” cât timp rămân dezactivate.</p>
+      {/if}
       {#each rows as row, i (row._key)}
         <DeviceRow
           bind:device={rows[i]}

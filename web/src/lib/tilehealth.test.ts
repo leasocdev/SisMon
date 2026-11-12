@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TileHealth } from './tilehealth';
+import { retryDelay, TileHealth } from './tilehealth';
 
 describe('TileHealth', () => {
   it('stays on tiles while they load', () => {
@@ -30,5 +30,15 @@ describe('TileHealth', () => {
     for (let i = 0; i < 8; i++) h.record(false, 1000 + i);
     h.reset();
     expect(h.shouldFallback(2000)).toBe(false);
+  });
+});
+
+describe('retryDelay', () => {
+  it('crește exponențial, cu dispersie (0,75×–1,75× din bază)', () => {
+    expect(retryDelay(1, 0)).toBe(750);
+    expect(retryDelay(1, 0.5)).toBe(1250);
+    expect(retryDelay(2, 0)).toBe(1500);
+    expect(retryDelay(3, 0.999)).toBeLessThan(7000);
+    expect(retryDelay(3, 0)).toBe(3000);
   });
 });

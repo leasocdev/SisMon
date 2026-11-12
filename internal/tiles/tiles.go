@@ -67,7 +67,7 @@ func New(dir, version string) (*Proxy, error) {
 	}
 	p := &Proxy{
 		Upstream: "https://tile.openstreetmap.org", MaxBytes: 500 << 20, TTL: 7 * 24 * time.Hour, Timeout: 5 * time.Second,
-		Client: &http.Client{}, Now: time.Now, dir: dir, ua: "NetWatch/" + version + " (monitorizare rețea, instalare locală)",
+		Client: &http.Client{}, Now: time.Now, dir: dir, ua: "SisMon/" + version + " (monitorizare rețea, instalare locală)",
 		sem: make(chan struct{}, concurrency), index: map[string]*entry{}, inflight: map[string]*call{},
 	}
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {

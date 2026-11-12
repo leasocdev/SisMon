@@ -3,7 +3,7 @@
 </script>
 
 {#if live.demo}
-  <div class="demo" role="note">MOD DEMONSTRATIV — date simulate. Parola de administrare: <strong>netwatch-demo</strong></div>
+  <div class="demo" role="note">MOD DEMONSTRATIV — date simulate. Parola de administrare: <strong>sismon-demo</strong></div>
 {/if}
 
 <style>

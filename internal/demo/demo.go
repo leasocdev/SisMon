@@ -1,4 +1,4 @@
-// Package demo provides the simulated network used by `netwatch demo`.
+// Package demo provides the simulated network used by `sismon demo`.
 package demo
 
 import (
@@ -8,15 +8,15 @@ import (
 	"net/netip"
 	"time"
 
-	"netwatch/internal/auth"
-	"netwatch/internal/domain"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/auth"
+	"sismon/internal/domain"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 // Password is the administrator password of the demo (shown in the banner).
-const Password = "netwatch-demo"
+const Password = "sismon-demo"
 
 type device struct{ name, kind string }
 
@@ -79,7 +79,7 @@ func Seed(ctx context.Context, st *store.Store) error {
 	if err := st.SetMeta(ctx, "password_hash", h); err != nil {
 		return err
 	}
-	return st.SetMeta(ctx, "identity", map[string]any{"name": "NetWatch Demo", "subtitle": "MOD DEMONSTRATIV", "report_title": "Raport de disponibilitate (demo)", "logo_version": 0})
+	return st.SetMeta(ctx, "identity", map[string]any{"name": "SisMon Demo", "subtitle": "MOD DEMONSTRATIV", "report_title": "Raport de disponibilitate (demo)", "logo_version": 0})
 }
 
 // Scenario answers pings deterministically from the time elapsed since Start.

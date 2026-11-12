@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/state"
+	"sismon/internal/state"
 )
 
 func TestLatencyResolution(t *testing.T) {

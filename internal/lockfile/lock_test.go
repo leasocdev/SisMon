@@ -19,7 +19,7 @@ func TestLockExclusive(t *testing.T) {
 		}
 		release()
 	}
-	fi, err := os.Stat(filepath.Join(dir, "netwatch.lock"))
+	fi, err := os.Stat(filepath.Join(dir, "sismon.lock"))
 	if err != nil || fi.Size() > 1 {
 		t.Fatalf("lock file grew: %v %v", fi, err)
 	}

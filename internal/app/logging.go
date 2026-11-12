@@ -46,10 +46,10 @@ func (f fanout) WithGroup(n string) slog.Handler {
 	return out
 }
 
-// SetupLogging logs JSON to <data>/logs/netwatch.log (5 × 5 MB) and text to
+// SetupLogging logs JSON to <data>/logs/sismon.log (5 × 5 MB) and text to
 // stdout, and installs the logger as the slog default.
 func SetupLogging(dataDir string, level slog.Level) (*slog.Logger, func()) {
-	lj := &lumberjack.Logger{Filename: filepath.Join(dataDir, "logs", "netwatch.log"), MaxSize: 5, MaxBackups: 5}
+	lj := &lumberjack.Logger{Filename: filepath.Join(dataDir, "logs", "sismon.log"), MaxSize: 5, MaxBackups: 5}
 	var stdout io.Writer = os.Stdout
 	opts := &slog.HandlerOptions{Level: level}
 	l := slog.New(fanout{slog.NewJSONHandler(lj, opts), slog.NewTextHandler(stdout, opts)})

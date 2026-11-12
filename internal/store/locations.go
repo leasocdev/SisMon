@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/settings"
-	"netwatch/internal/state"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/settings"
+	"sismon/internal/state"
 )
 
 // Device is a configured device.
@@ -24,8 +25,12 @@ type Device struct {
 	Primary    bool               `json:"is_primary"`
 	SortOrder  int                `json:"sort_order"`
 	Overrides  settings.Overrides `json:"overrides"`
-	CreatedAt  time.Time          `json:"-"`
-	ArchivedAt *time.Time         `json:"-"`
+	// Disabled devices are kept in the configuration but not monitored.
+	Disabled      bool       `json:"disabled"`
+	DisabledAt    *int64     `json:"disabled_at"`
+	DisabledUntil *int64     `json:"disabled_until"`
+	CreatedAt     time.Time  `json:"-"`
+	ArchivedAt    *time.Time `json:"-"`
 }
 
 // Location is a configured location with its devices.
@@ -48,6 +53,8 @@ type SaveResult struct {
 	Added       []int64
 	HostChanged []int64
 	Archived    []int64
+	Disabled    []int64
+	Enabled     []int64
 }
 
 func nullInt(p *int) any {
@@ -65,15 +72,17 @@ func intPtr(v sql.NullInt64) *int {
 	return &i
 }
 
-const deviceCols = `id,location_id,rev,name,host,kind,is_primary,sort_order,interval_s,failures,recoveries,created_at,archived_at`
+const deviceCols = `id,location_id,rev,name,host,kind,is_primary,sort_order,interval_s,failures,recoveries,created_at,archived_at,disabled_at,disabled_until`
 
 func scanDevice(sc interface{ Scan(...any) error }) (Device, error) {
 	var d Device
-	var iv, f, r, arch sql.NullInt64
+	var iv, f, r, arch, dis, until sql.NullInt64
 	var created int64
-	err := sc.Scan(&d.ID, &d.LocationID, &d.Rev, &d.Name, &d.Host, &d.Kind, &d.Primary, &d.SortOrder, &iv, &f, &r, &created, &arch)
+	err := sc.Scan(&d.ID, &d.LocationID, &d.Rev, &d.Name, &d.Host, &d.Kind, &d.Primary, &d.SortOrder, &iv, &f, &r, &created, &arch, &dis, &until)
 	d.Overrides = settings.Overrides{IntervalS: intPtr(iv), Failures: intPtr(f), Recoveries: intPtr(r)}
 	d.CreatedAt, d.ArchivedAt = FromMs(created), timePtr(arch)
+	d.DisabledAt, d.DisabledUntil = i64(dis), i64(until)
+	d.Disabled = d.DisabledAt != nil
 	return d, err
 }
 
@@ -185,6 +194,79 @@ func archiveDevice(ctx context.Context, tx *sql.Tx, id int64, now time.Time) err
 	return CloseOpen(ctx, tx, EntityDevice, id, now)
 }
 
+// disableDevice stops monitoring a device: its open incident and state
+// interval end (the time it stays disabled is a gap, left out of statistics)
+// and its status restarts from unknown when it is enabled again.
+func disableDevice(ctx context.Context, tx *sql.Tx, id int64, until *int64, now time.Time) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE devices SET disabled_at=?,disabled_until=?,rev=rev+1 WHERE id=?`, Ms(now), until, id); err != nil {
+		return wrap("disable device", err)
+	}
+	if err := endIncident(ctx, tx, id, now, "disabled"); err != nil {
+		return err
+	}
+	if err := resetStatus(ctx, tx, id, now); err != nil {
+		return err
+	}
+	return CloseOpen(ctx, tx, EntityDevice, id, now)
+}
+
+// enableDevice resumes monitoring a disabled device from the unknown state.
+func enableDevice(ctx context.Context, tx *sql.Tx, id int64, now time.Time) error {
+	if _, err := tx.ExecContext(ctx, `UPDATE devices SET disabled_at=NULL,disabled_until=NULL,rev=rev+1 WHERE id=?`, id); err != nil {
+		return wrap("enable device", err)
+	}
+	if err := resetStatus(ctx, tx, id, now); err != nil {
+		return err
+	}
+	return CloseAndOpen(ctx, tx, EntityDevice, id, state.Unknown, now)
+}
+
+func eqPtr(a, b *int64) bool { return (a == nil) == (b == nil) && (a == nil || *a == *b) }
+
+// EnableExpired re-enables the devices whose disabled_until has passed and
+// returns how many there were.
+func (s *Store) EnableExpired(ctx context.Context, now time.Time) (int, error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx, `SELECT id,location_id FROM devices WHERE archived_at IS NULL AND disabled_at IS NOT NULL AND disabled_until<=?`, Ms(now))
+	if err != nil {
+		return 0, wrap("expired disabled devices", err)
+	}
+	type dev struct{ id, loc int64 }
+	var due []dev
+	for rows.Next() {
+		var d dev
+		if err := rows.Scan(&d.id, &d.loc); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		due = append(due, d)
+	}
+	rows.Close()
+	if len(due) == 0 {
+		return 0, nil
+	}
+	locs := map[int64]bool{}
+	for _, d := range due {
+		if err := enableDevice(ctx, tx, d.id, now); err != nil {
+			return 0, err
+		}
+		if err := s.Audit(ctx, tx, "enable_device_auto", "device", d.id, map[string]int64{"location_id": d.loc}, now); err != nil {
+			return 0, err
+		}
+		locs[d.loc] = true
+	}
+	for l := range locs {
+		if _, err := RecomputeLocation(ctx, tx, l, now); err != nil {
+			return 0, err
+		}
+	}
+	return len(due), tx.Commit()
+}
+
 // SaveLocation creates (id==nil) or updates a location. in must be normalized.
 func (s *Store) SaveLocation(ctx context.Context, id *int64, in domain.LocationInput, now time.Time) (SaveResult, error) {
 	tx, err := s.DB.BeginTx(ctx, nil)
@@ -290,6 +372,12 @@ func (s *Store) saveLocationTx(ctx context.Context, tx *sql.Tx, id *int64, in do
 	}
 	for pos, d := range in.Devices {
 		o := d.Overrides
+		if d.Disabled && d.DisabledUntil != nil && *d.DisabledUntil <= Ms(now) {
+			// An unchanged date that has just passed is left to EnableExpired.
+			if d.ID == nil || old[*d.ID].DisabledAt == nil || !eqPtr(old[*d.ID].DisabledUntil, d.DisabledUntil) {
+				return res, apperr.Invalid(fmt.Sprintf("devices.%d.disabled_until", pos), "Data reactivării trebuie să fie în viitor.")
+			}
+		}
 		if d.ID == nil {
 			r, err := tx.ExecContext(ctx, `INSERT INTO devices(location_id,name,host,kind,is_primary,sort_order,interval_s,failures,recoveries,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)`,
 				res.LocationID, d.Name, d.Host, d.Kind, d.Primary, pos, nullInt(o.IntervalS), nullInt(o.Failures), nullInt(o.Recoveries), Ms(now))
@@ -304,6 +392,12 @@ func (s *Store) saveLocationTx(ctx context.Context, tx *sql.Tx, id *int64, in do
 				return res, err
 			}
 			res.Added = append(res.Added, did)
+			if d.Disabled {
+				if err := disableDevice(ctx, tx, did, d.DisabledUntil, now); err != nil {
+					return res, err
+				}
+				res.Disabled = append(res.Disabled, did)
+			}
 			continue
 		}
 		did := *d.ID
@@ -311,7 +405,34 @@ func (s *Store) saveLocationTx(ctx context.Context, tx *sql.Tx, id *int64, in do
 			d.Name, d.Host, d.Kind, d.Primary, pos, nullInt(o.IntervalS), nullInt(o.Failures), nullInt(o.Recoveries), did); err != nil {
 			return res, wrap("update device", err)
 		}
-		if d.Host != old[did].Host {
+		wasDisabled := old[did].DisabledAt != nil
+		switch {
+		case d.Disabled && !wasDisabled:
+			if err := disableDevice(ctx, tx, did, d.DisabledUntil, now); err != nil {
+				return res, err
+			}
+			res.Disabled = append(res.Disabled, did)
+		case !d.Disabled && wasDisabled:
+			if err := enableDevice(ctx, tx, did, now); err != nil {
+				return res, err
+			}
+			res.Enabled = append(res.Enabled, did)
+		case d.Disabled:
+			if _, err := tx.ExecContext(ctx, `UPDATE devices SET disabled_until=? WHERE id=?`, d.DisabledUntil, did); err != nil {
+				return res, wrap("update device", err)
+			}
+		}
+		hostChanged := d.Host != old[did].Host
+		if hostChanged && (d.Disabled || wasDisabled) {
+			// Disabled: nothing is monitored, only drop in-flight results.
+			// Just enabled: enableDevice already restarted it from unknown.
+			if d.Disabled {
+				if _, err := tx.ExecContext(ctx, `UPDATE devices SET rev=rev+1 WHERE id=?`, did); err != nil {
+					return res, err
+				}
+			}
+			res.HostChanged = append(res.HostChanged, did)
+		} else if hostChanged {
 			if _, err := tx.ExecContext(ctx, `UPDATE devices SET rev=rev+1 WHERE id=?`, did); err != nil {
 				return res, err
 			}

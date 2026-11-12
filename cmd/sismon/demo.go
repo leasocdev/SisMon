@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
-	"netwatch/internal/app"
-	"netwatch/internal/config"
-	"netwatch/internal/demo"
-	"netwatch/internal/monitor/icmp"
+	"sismon/internal/app"
+	"sismon/internal/config"
+	"sismon/internal/demo"
+	"sismon/internal/monitor/icmp"
 )
 
 // Test hooks: demoReady receives the listen address, demoCtx replaces the
@@ -61,7 +61,7 @@ func cmdDemo(args []string, stdout, stderr io.Writer) int {
 	}
 
 	sc := demo.Scenario{Start: time.Now()}
-	fmt.Fprintf(stdout, "NetWatch — MOD DEMONSTRATIV (date simulate)\nDirector: %s\nAdresă: %s\nParola de administrare: %s\nOprire: Ctrl+C\n", dir, *listen, demo.Password)
+	fmt.Fprintf(stdout, "SisMon — MOD DEMONSTRATIV (date simulate)\nDirector: %s\nAdresă: %s\nParola de administrare: %s\nOprire: Ctrl+C\n", dir, *listen, demo.Password)
 	err = app.Run(ctx, config.Config{DataDir: dir, Listen: *listen}, app.Options{
 		Pinger: &icmp.Fake{Fn: func(a netip.Addr) icmp.Result { return sc.Result(a, time.Now()) }},
 		Lookup: func(_ context.Context, host string) ([]netip.Addr, error) {

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/auth"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/auth"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 // SamplesRetention is how long raw samples are kept.

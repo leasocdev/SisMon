@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/auth"
+	"sismon/internal/apperr"
+	"sismon/internal/auth"
 )
 
 const cookieName = "nw_session"

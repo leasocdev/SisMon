@@ -10,16 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/auth"
-	"netwatch/internal/domain"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/auth"
+	"sismon/internal/domain"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 func setup(t *testing.T) (*store.Store, string) {
 	t.Helper()
 	dir := t.TempDir()
-	st, err := store.Open(context.Background(), filepath.Join(dir, "netwatch.db"), store.Options{})
+	st, err := store.Open(context.Background(), filepath.Join(dir, "sismon.db"), store.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestBackupCreateExcludesSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	f.Close()
-	if _, _, err := b.Open(`..\netwatch.db`); err == nil {
+	if _, _, err := b.Open(`..\sismon.db`); err == nil {
 		t.Fatal("traversal accepted")
 	}
 	info2, err := b.Create(context.Background(), "manual")
@@ -214,7 +214,7 @@ func TestRotateAllIncludesSecondary(t *testing.T) {
 	for _, d := range []string{b.Dir, s.BackupSecondaryDir} {
 		os.MkdirAll(d, 0o750)
 		for i := 0; i < 60; i++ {
-			name := "netwatch-" + now.AddDate(0, 0, -i).Format("20060102-150405") + "-auto.db"
+			name := "sismon-" + now.AddDate(0, 0, -i).Format("20060102-150405") + "-auto.db"
 			os.WriteFile(filepath.Join(d, name), []byte("x"), 0o600)
 		}
 	}

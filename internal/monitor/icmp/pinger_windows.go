@@ -33,7 +33,7 @@ func New() (Pinger, error) {
 
 func (winPinger) Mode() string { return "windows" }
 
-var payload = []byte("NetWatch-ICMP-probe-32-bytes....")
+var payload = []byte("SisMon-ICMP-probe-32-bytes....")
 
 func (winPinger) Ping(ctx context.Context, addr netip.Addr, packets int, timeout time.Duration) Result {
 	addr = addr.Unmap()

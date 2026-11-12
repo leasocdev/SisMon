@@ -9,14 +9,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"netwatch/internal/app"
-	"netwatch/internal/jobs"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/app"
+	"sismon/internal/jobs"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
-// ErrInvalid is returned for files that are not NetWatch databases.
-var ErrInvalid = errors.New("Fișierul nu este o bază NetWatch validă.")
+// ErrInvalid is returned for files that are not SisMon databases.
+var ErrInvalid = errors.New("Fișierul nu este o bază SisMon validă.")
 
 var required = []string{"meta", "locations", "devices", "device_status", "state_intervals", "samples", "samples_hourly", "incidents", "audit", "sessions"}
 
@@ -56,7 +56,7 @@ func Restore(ctx context.Context, dataDir, src string) (jobs.BackupInfo, error) 
 	if err := Verify(src); err != nil {
 		return jobs.BackupInfo{}, err
 	}
-	dbPath := filepath.Join(dataDir, "netwatch.db")
+	dbPath := filepath.Join(dataDir, "sismon.db")
 	cur, err := app.OpenStore(ctx, dataDir)
 	if err != nil {
 		return jobs.BackupInfo{}, err

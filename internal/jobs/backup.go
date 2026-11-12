@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 // Zone is the local time zone for backup names and schedules.
@@ -28,7 +28,7 @@ func mustZone(name string) *time.Location {
 	return z
 }
 
-var nameRe = regexp.MustCompile(`^netwatch-(\d{8}-\d{6})(?:-(\d+))?-(auto|manual|pre-migrate|pre-restore)\.db$`)
+var nameRe = regexp.MustCompile(`^sismon-(\d{8}-\d{6})(?:-(\d+))?-(auto|manual|pre-migrate|pre-restore)\.db$`)
 
 // BackupService creates, lists and opens backups.
 type BackupService struct {
@@ -60,12 +60,12 @@ func (b *BackupService) Create(ctx context.Context, kind string) (BackupInfo, er
 		return BackupInfo{}, fmt.Errorf("directorul de backup: %w", err)
 	}
 	stamp := time.Now().In(Zone).Format("20060102-150405")
-	name := fmt.Sprintf("netwatch-%s-%s.db", stamp, kind)
+	name := fmt.Sprintf("sismon-%s-%s.db", stamp, kind)
 	for i := 1; ; i++ {
 		if _, err := os.Stat(filepath.Join(b.Dir, name)); os.IsNotExist(err) {
 			break
 		}
-		name = fmt.Sprintf("netwatch-%s-%d-%s.db", stamp, i, kind)
+		name = fmt.Sprintf("sismon-%s-%d-%s.db", stamp, i, kind)
 	}
 	final := filepath.Join(b.Dir, name)
 	tmp := final + ".tmp"

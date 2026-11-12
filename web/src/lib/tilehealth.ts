@@ -22,3 +22,15 @@ export class TileHealth {
     this.events = [];
   }
 }
+
+/** Retries for one tile before it counts as failed. */
+export const TILE_RETRIES = 3;
+
+/** Delay before retry number `attempt` (1-based): exponential with jitter, so
+ * a burst of failed tiles is not retried all at once. The proxy answers 503
+ * right away when its download pool is full, and a synchronized retry burst
+ * would just fill it again. `rand` is in [0, 1). */
+export function retryDelay(attempt: number, rand: number): number {
+  const base = 1000 * 2 ** (attempt - 1);
+  return Math.round(base * (0.75 + rand));
+}

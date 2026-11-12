@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/live"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/state"
+	"sismon/internal/apperr"
+	"sismon/internal/live"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/state"
 )
 
 type slowPinger struct {

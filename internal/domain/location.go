@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/settings"
+	"sismon/internal/apperr"
+	"sismon/internal/settings"
 )
 
 // DeviceInput is one device as submitted by the administrator.
@@ -19,6 +19,10 @@ type DeviceInput struct {
 	Kind      string             `json:"kind"`
 	Primary   bool               `json:"is_primary"`
 	Overrides settings.Overrides `json:"overrides"`
+	// Disabled devices are not monitored; DisabledUntil (ms, optional)
+	// re-enables them automatically.
+	Disabled      bool   `json:"disabled"`
+	DisabledUntil *int64 `json:"disabled_until"`
 }
 
 // LocationInput is a location with its devices as submitted.
@@ -87,6 +91,9 @@ func (in *LocationInput) Normalize(s settings.Settings) error {
 		d.Name, d.Host, d.Kind = strings.TrimSpace(d.Name), strings.TrimSpace(d.Host), strings.TrimSpace(d.Kind)
 		if d.Kind == "" {
 			d.Kind = DefaultKind
+		}
+		if !d.Disabled {
+			d.DisabledUntil = nil
 		}
 		if err := length(p+"name", "Denumirea echipamentului", d.Name, 1, 120); err != nil {
 			return err

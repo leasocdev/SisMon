@@ -11,9 +11,9 @@ import (
 	"github.com/xuri/excelize/v2"
 	"golang.org/x/text/encoding/charmap"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/settings"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/settings"
 )
 
 func enc1250(t *testing.T, s string) []byte {

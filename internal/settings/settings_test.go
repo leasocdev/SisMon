@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 type memMeta map[string][]byte

@@ -239,7 +239,7 @@ func TestTileUserAgent(t *testing.T) {
 	u := newUpstream(t)
 	p, _, _ := newProxy(t, u)
 	get(p, "/tiles/2/1/1.png")
-	if ua, _ := u.ua.Load().(string); !strings.HasPrefix(ua, "NetWatch/1.2.3") {
+	if ua, _ := u.ua.Load().(string); !strings.HasPrefix(ua, "SisMon/1.2.3") {
 		t.Fatal(ua)
 	}
 }

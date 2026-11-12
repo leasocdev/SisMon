@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ApiError, send } from '../lib/api';
   import { fmtLatency } from '../lib/status';
+  import { fmtDateTime, utcToZonedParts, zonedToUtc } from '../lib/time';
   import type { DeviceInput, Settings, TestResult } from '../lib/types';
 
   let {
@@ -31,6 +32,36 @@
   let result = $state<{ ok: boolean; text: string } | null>(null);
   let showOverrides = $state(Object.keys(device.overrides).length > 0);
 
+  // Data reactivării, editată în ora Chișinăului.
+  const initial = device.disabled_until != null ? utcToZonedParts(device.disabled_until) : null;
+  let untilDate = $state(initial?.date ?? '');
+  let untilTime = $state(initial?.time ?? '');
+
+  function setUntil() {
+    if (!untilDate) {
+      device.disabled_until = null;
+      return;
+    }
+    const ms = zonedToUtc(untilDate, untilTime || '00:00');
+    device.disabled_until = Number.isNaN(ms) ? null : ms;
+  }
+
+  function preset(days: number | null) {
+    if (days === null) {
+      untilDate = untilTime = '';
+    } else {
+      const p = utcToZonedParts(Date.now() + days * 86_400_000);
+      untilDate = p.date;
+      untilTime = p.time;
+    }
+    setUntil();
+  }
+
+  function toggleDisabled(on: boolean) {
+    device.disabled = on;
+    if (!on) preset(null);
+  }
+
   const n = $derived(index + 1);
   const id = (f: string) => `dev-${index}-${f}`;
 
@@ -56,7 +87,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="device-row card" ondragover={(e) => e.preventDefault()} ondrop={(e) => (e.preventDefault(), onDrop())}>
+<div class="device-row card" class:off={device.disabled} ondragover={(e) => e.preventDefault()} ondrop={(e) => (e.preventDefault(), onDrop())}>
   <div class="handle" draggable="true" ondragstart={onDragStart} title="Trageți pentru a reordona" aria-hidden="true">⠿</div>
   <div class="fields">
     <div class="field">
@@ -83,11 +114,40 @@
     <button type="button" onclick={test} disabled={testing || !device.host.trim()}>{testing ? 'Se testează…' : 'Testează acum'}</button>
     {#if result}<span class="test-result" class:t-up={result.ok} class:t-down={!result.ok} role="status">{result.text}</span>{/if}
     <span class="spacer"></span>
+    <label class="disable-box">
+      <input type="checkbox" checked={device.disabled} onchange={(e) => toggleDisabled(e.currentTarget.checked)} />
+      Dezactivat <span class="sr-only">{n}</span>
+    </label>
     <button type="button" onclick={() => (showOverrides = !showOverrides)} aria-expanded={showOverrides}>Praguri proprii</button>
     <button type="button" onclick={() => onMove(index - 1)} disabled={index === 0} aria-label="Mută în sus">↑</button>
     <button type="button" onclick={() => onMove(index + 1)} disabled={index === count - 1} aria-label="Mută în jos">↓</button>
     <button type="button" onclick={onRemove} disabled={count === 1} aria-label="Șterge rândul {n}">Șterge</button>
   </div>
+  {#if device.disabled}
+    <div class="disabled-panel" role="group" aria-label="Dezactivare echipament {n}">
+      <p class="what">Nu se monitorizează și nu apare pe Monitorizare, hartă sau dispecerat. Perioada nu intră în statistici.</p>
+      <div class="until">
+        <div class="field">
+          <label for={id('ud')}>Reactivare automată — data</label>
+          <input id={id('ud')} type="date" bind:value={untilDate} oninput={setUntil} aria-invalid={!!errors.disabled_until} />
+        </div>
+        <div class="field">
+          <label for={id('ut')}>ora</label>
+          <input id={id('ut')} type="time" bind:value={untilTime} oninput={setUntil} disabled={!untilDate} />
+        </div>
+        <div class="presets">
+          <button type="button" onclick={() => preset(1)}>+1 zi</button>
+          <button type="button" onclick={() => preset(7)}>+7 zile</button>
+          <button type="button" onclick={() => preset(null)} disabled={!untilDate}>Fără dată</button>
+        </div>
+      </div>
+      {#if errors.disabled_until}<p class="error-text">{errors.disabled_until}</p>{/if}
+      <p class="hint muted" role="status">
+        {#if device.disabled_until != null}Se reactivează automat la {fmtDateTime(device.disabled_until)}.
+        {:else}Rămâne dezactivat până îl reactivați manual.{/if}
+      </p>
+    </div>
+  {/if}
   {#if showOverrides}
     <div class="overrides">
       <div class="field">
@@ -163,6 +223,41 @@
   }
   .test-result {
     font-weight: 600;
+  }
+  .device-row.off {
+    border-style: dashed;
+    background: color-mix(in srgb, var(--muted) 10%, var(--surface));
+  }
+  .device-row.off .fields {
+    opacity: 0.7;
+  }
+  .disable-box {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .disabled-panel {
+    border-left: 3px solid var(--muted);
+    padding: 4px 0 4px 10px;
+  }
+  .disabled-panel .what {
+    margin: 0 0 6px;
+    font-size: 0.9em;
+  }
+  .until {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .until .field {
+    margin: 0;
+  }
+  .presets {
+    display: flex;
+    gap: 6px;
   }
   .overrides {
     display: flex;

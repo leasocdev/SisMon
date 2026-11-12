@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/live"
-	"netwatch/internal/state"
+	"sismon/internal/live"
+	"sismon/internal/state"
 )
 
 type sseMsg struct{ id, event, data string }

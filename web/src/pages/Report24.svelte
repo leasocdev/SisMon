@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import IncidentList from '../components/IncidentList.svelte';
+  import StatusBadge from '../components/StatusBadge.svelte';
   import { get } from '../lib/api';
   import { live } from '../lib/live.svelte';
+  import { errorText } from '../lib/status';
   import { fmtDateTime, fmtDuration, TZ } from '../lib/time';
   import type { Report24 } from '../lib/types';
 
@@ -53,37 +55,51 @@
   {#if report}
     <p class="summary">
       <span>Locații monitorizate: <strong>{report.locations}</strong></span>
-      <span>Afectate acum: <strong>{report.affected_now}</strong></span>
+      <span class="now" class:t-down={report.affected_now > 0} class:t-up={report.affected_now === 0}>
+        Indisponibile acum: <strong>{report.affected_now}</strong>
+      </span>
       <span>Întreruperi în 24 h: <strong>{report.incidents.length}</strong></span>
       <span>Incidente minore: <strong>{report.minor_incidents.length}</strong></span>
     </p>
 
-    <h2>Situația curentă</h2>
-    <table class="current">
-      <thead>
-        <tr><th scope="col">Locație</th><th scope="col">Echipament primar</th><th scope="col">Indisponibil de la</th><th scope="col">Durată</th></tr>
-      </thead>
-      <tbody>
-        {#each report.current as c (c.device_id)}
+    {#if report.current.length}
+      <h2 class="current-h t-down">✕ Locații indisponibile acum ({report.current.length})</h2>
+      <table class="current">
+        <thead>
           <tr>
-            <td><a href="/locatie/{c.location_id}">{c.location}</a></td>
-            <td>{c.device}</td>
-            <td>{fmtDateTime(c.since)}</td>
-            <td>{fmtDuration((now - c.since) / 1000)}</td>
+            <th scope="col">Stare</th><th scope="col">Locație</th><th scope="col">Echipament căzut</th>
+            <th scope="col">Indisponibilă de la</th><th scope="col">Durată</th>
           </tr>
-        {:else}
-          <tr><td colspan="4" class="t-up">✓ Nicio locație afectată în acest moment.</td></tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each report.current as c (c.location_id)}
+            <tr>
+              <td><StatusBadge state="down" size="small" /></td>
+              <td class="loc"><a href="/locatie/{c.location_id}">{c.location}</a></td>
+              <td>
+                <ul class="devs">
+                  {#each c.devices as d (d.id)}
+                    <li>{d.name} — <span class="cause">{errorText(d.error_code) || 'Indisponibil'}</span></li>
+                  {/each}
+                </ul>
+              </td>
+              <td>{fmtDateTime(c.since)}</td>
+              <td class="dur">{fmtDuration((now - c.since) / 1000)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {:else}
+      <h2 class="current-h t-up">✓ Toate locațiile sunt funcționale</h2>
+    {/if}
 
     <h2>Întreruperi în ultimele 24 de ore</h2>
-    <div class="outages">
+    <div class="outages major">
       <IncidentList incidents={report.incidents} empty="Nicio întrerupere în ultimele 24 de ore." />
     </div>
 
     <h2>Incidente minore în ultimele 24 de ore</h2>
-    <div class="outages">
+    <div class="outages minor">
       <IncidentList incidents={report.minor_incidents} empty="Niciun incident minor în ultimele 24 de ore." />
     </div>
   {:else if !error}
@@ -111,6 +127,40 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+  .current-h {
+    font-size: 1.15em;
+  }
+  .now {
+    font-weight: 600;
+  }
+  table.current tbody tr {
+    background: color-mix(in srgb, var(--c-down) 10%, var(--surface));
+  }
+  table.current tbody td:first-child {
+    border-left: 5px solid var(--c-down);
+  }
+  .loc {
+    font-weight: 700;
+  }
+  .devs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .cause {
+    color: var(--c-down-text);
+    font-weight: 600;
+  }
+  .dur {
+    font-weight: 700;
+  }
+  @media print {
+    /* Insigna roșie și banda rămân vizibile chiar dacă browserul nu tipărește fundalurile. */
+    table.current :global(.badge) {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
   }
   .summary {
     display: flex;

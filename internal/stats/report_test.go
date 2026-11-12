@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/live"
-	"netwatch/internal/state"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/live"
+	"sismon/internal/state"
+	"sismon/internal/store"
 )
 
 // T converts test seconds to a time.
@@ -106,8 +106,8 @@ func TestAvailabilityExcludesUnknown(t *testing.T) {
 	if d.Availability == nil || !near(*d.Availability, 75) || d.Coverage == nil || !near(*d.Coverage, 80) {
 		t.Fatalf("%+v %+v", d.Availability, d.Coverage)
 	}
-	if r.Summary.Availability == nil || !near(*r.Summary.Availability, 75) || !near(r.Summary.DownS, 20) {
-		t.Fatalf("%+v", r.Summary)
+	if !near(d.Durations.Down, 20) {
+		t.Fatalf("%+v", d.Durations)
 	}
 }
 
@@ -137,7 +137,7 @@ func TestReportDeviceCreatedAfterPeriod(t *testing.T) {
 	// archived before the period: no eligible time
 	e.exec(`UPDATE devices SET archived_at=? WHERE id=1`, 50*1000)
 	r = e.build(Query{From: T(60), To: T(100)}, 1000)
-	if len(r.Devices) != 0 || r.Summary.Availability != nil {
+	if len(r.Devices) != 0 {
 		t.Fatalf("%+v", r)
 	}
 }
@@ -179,8 +179,8 @@ func TestMTTR(t *testing.T) {
 	e.incident(1, 100, 120, 280, "recovered")
 	e.incident(1, 300, 320, 330, "monitoring_gap")
 	r := e.build(Query{From: T(0), To: T(400)}, 400)
-	if r.Summary.MTTRS == nil || !near(*r.Summary.MTTRS, 120) || r.Devices[0].MTTRS == nil || !near(*r.Devices[0].MTTRS, 120) {
-		t.Fatalf("%+v", r.Summary.MTTRS)
+	if r.Devices[0].MTTRS == nil || !near(*r.Devices[0].MTTRS, 120) {
+		t.Fatalf("%+v", r.Devices[0].MTTRS)
 	}
 }
 
@@ -263,19 +263,31 @@ func TestReport24Current(t *testing.T) {
 	e.device(1, 1, true, 0)
 	now := int64(100_000)
 	e.incident(1, now-600, now-480, -1, "")
-	snap := live.Snapshot{Locations: []live.LocationView{{ID: 1, Name: "L1", State: state.Down, Devices: []live.DeviceView{
-		{ID: 1, LocationID: 1, Name: "D1", Primary: true, State: state.Down, Since: (now - 480) * 1000},
-		{ID: 2, LocationID: 1, Name: "S", State: state.Down},
-	}}}}
+	snap := live.Snapshot{Locations: []live.LocationView{
+		{ID: 1, Name: "L1", State: state.Down, Devices: []live.DeviceView{
+			{ID: 1, LocationID: 1, Name: "D1", Primary: true, State: state.Down, Since: (now - 480) * 1000, ErrorCode: "timeout"},
+			{ID: 2, LocationID: 1, Name: "S", State: state.Down},
+			{ID: 3, LocationID: 1, Name: "D3", Primary: true, State: state.Down, Since: (now - 60) * 1000, ErrorCode: "host_unreachable"},
+		}},
+		{ID: 2, Name: "L2", State: state.Down, Devices: []live.DeviceView{
+			{ID: 4, LocationID: 2, Name: "D4", Primary: true, State: state.Down, Since: (now - 9000) * 1000},
+		}},
+	}}
 	r, err := BuildReport24(context.Background(), e.st, snap, T(now))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Current[0].DeviceID != 1 {
-		t.Fatalf("device id missing: %+v", r.Current[0])
-	}
-	if r.AffectedNow != 1 || len(r.Current) != 1 || r.Current[0].Since != (now-600)*1000 || r.Locations != 1 || len(r.Incidents) != 1 {
+	// One entry per location, the oldest outage first.
+	if r.AffectedNow != 2 || len(r.Current) != 2 || r.Current[0].LocationID != 2 || r.Locations != 2 || len(r.Incidents) != 1 {
 		t.Fatalf("%+v", r)
+	}
+	l1 := r.Current[1]
+	if l1.Since != (now-600)*1000 || len(l1.Devices) != 2 {
+		t.Fatalf("%+v", l1)
+	}
+	// The secondary device is left out; each primary keeps its own cause.
+	if l1.Devices[0].ID != 1 || l1.Devices[0].ErrorCode != "timeout" || l1.Devices[1].ID != 3 || l1.Devices[1].ErrorCode != "host_unreachable" {
+		t.Fatalf("%+v", l1.Devices)
 	}
 }
 

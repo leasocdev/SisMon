@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/auth"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/store"
+	"sismon/internal/auth"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/store"
 )
 
 
@@ -63,7 +63,7 @@ func TestSeedOnce(t *testing.T) {
 	}
 	var id struct{ Name string }
 	st.GetMeta(ctx, "identity", &id)
-	if id.Name != "NetWatch Demo" {
+	if id.Name != "SisMon Demo" {
 		t.Fatal(id.Name)
 	}
 }

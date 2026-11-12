@@ -9,7 +9,7 @@ import (
 	"errors"
 	"time"
 
-	"netwatch/internal/store"
+	"sismon/internal/store"
 )
 
 // Sessions are administrator sessions stored server-side (hashed tokens).

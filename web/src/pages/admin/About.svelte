@@ -4,7 +4,7 @@
 
 <h1>Despre</h1>
 <div class="card about">
-  <p><strong>NetWatch</strong> {live.version} — monitorizarea disponibilității echipamentelor de rețea prin ICMP.</p>
+  <p><strong>SisMon</strong> {live.version} — monitorizarea disponibilității echipamentelor de rețea prin ICMP.</p>
   <p>Toate orele sunt afișate în fusul orar Europe/Chisinau.</p>
   <p>Ghidul de instalare și operare se află în documentația livrată împreună cu aplicația (<code>docs/operare.md</code>).</p>
   <h2>Adrese directe</h2>

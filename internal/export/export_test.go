@@ -9,10 +9,10 @@ import (
 
 	"github.com/xuri/excelize/v2"
 
-	"netwatch/internal/importer"
-	"netwatch/internal/settings"
-	"netwatch/internal/stats"
-	"netwatch/internal/store"
+	"sismon/internal/importer"
+	"sismon/internal/settings"
+	"sismon/internal/stats"
+	"sismon/internal/store"
 )
 
 func f(v float64) *float64 { return &v }
@@ -20,7 +20,6 @@ func f(v float64) *float64 { return &v }
 func sampleReport() stats.Report {
 	return stats.Report{
 		From: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC).UnixMilli(), To: time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC).UnixMilli(),
-		Summary: stats.Summary{Availability: f(99.5), Coverage: f(100), Incidents: 1, DownS: 3600, MTTRS: f(1800)},
 		Devices: []stats.DeviceRow{
 			{ID: 1, LocationID: 1, Location: "Cahul", Name: "Router", Host: "10.0.1.1", Kind: "Router", Primary: true, Durations: stats.Durations{Up: 3600 * 167, Down: 3600},
 				Availability: f(99.5), Coverage: f(100), LatencyMs: f(4.25), LossPct: f(0.5), Incidents: 1, MTTRS: f(1800)},
@@ -33,7 +32,7 @@ func sampleReport() stats.Report {
 }
 
 func sampleMeta() Meta {
-	return Meta{Title: "Raport de disponibilitate", AppName: "NetWatch", From: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC), To: time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC),
+	return Meta{Title: "Raport de disponibilitate", AppName: "SisMon", From: time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC), To: time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC),
 		Filters: []Filter{{"Locație", "Toate"}}, Generated: time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)}
 }
 

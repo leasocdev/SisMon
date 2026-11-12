@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 // MaxJSONBody bounds JSON request bodies.

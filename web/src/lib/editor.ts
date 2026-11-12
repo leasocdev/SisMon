@@ -3,7 +3,7 @@
 import type { AdminLocation, DeviceInput, LocationInput, Overrides } from './types';
 
 export function emptyDevice(primary = false): DeviceInput {
-  return { name: '', host: '', kind: '', is_primary: primary, overrides: {} };
+  return { name: '', host: '', kind: '', is_primary: primary, overrides: {}, disabled: false, disabled_until: null };
 }
 
 export function emptyLocation(): LocationInput {
@@ -17,7 +17,16 @@ export function toInput(l: AdminLocation): LocationInput {
     notes: l.notes,
     lat: l.lat,
     lon: l.lon,
-    devices: l.devices.map((d) => ({ id: d.id, name: d.name, host: d.host, kind: d.kind, is_primary: d.is_primary, overrides: { ...d.overrides } })),
+    devices: l.devices.map((d) => ({
+      id: d.id,
+      name: d.name,
+      host: d.host,
+      kind: d.kind,
+      is_primary: d.is_primary,
+      overrides: { ...d.overrides },
+      disabled: d.disabled,
+      disabled_until: d.disabled_until,
+    })),
   };
 }
 
@@ -39,7 +48,15 @@ export function toPayload(x: LocationInput): LocationInput {
     lat: x.lat,
     lon: x.lon,
     devices: x.devices.map((d) => {
-      const o: DeviceInput = { name: d.name.trim(), host: d.host.trim(), kind: d.kind.trim(), is_primary: d.is_primary, overrides: cleanOverrides(d.overrides) };
+      const o: DeviceInput = {
+        name: d.name.trim(),
+        host: d.host.trim(),
+        kind: d.kind.trim(),
+        is_primary: d.is_primary,
+        overrides: cleanOverrides(d.overrides),
+        disabled: d.disabled,
+        disabled_until: d.disabled ? d.disabled_until : null,
+      };
       if (d.id !== undefined) o.id = d.id;
       return o;
     }),
@@ -48,6 +65,12 @@ export function toPayload(x: LocationInput): LocationInput {
 
 export function isDirty(a: LocationInput, b: LocationInput): boolean {
   return JSON.stringify(toPayload(a)) !== JSON.stringify(toPayload(b));
+}
+
+/** True when every primary device is disabled: the location then has no state. */
+export function primariesDisabled(devices: Pick<DeviceInput, 'is_primary' | 'disabled'>[]): boolean {
+  const prim = devices.filter((d) => d.is_primary);
+  return prim.length > 0 && prim.every((d) => d.disabled);
 }
 
 export function moveDevice<T>(list: T[], from: number, to: number): T[] {

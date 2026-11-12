@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"netwatch/internal/live"
+	"sismon/internal/live"
 )
 
 func writeEvent(w http.ResponseWriter, epoch int64, seq uint64, typ string, data any) error {

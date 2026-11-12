@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 // Settings are the global monitoring settings, stored in meta "settings".

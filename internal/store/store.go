@@ -14,7 +14,7 @@ import (
 )
 
 // SchemaVersion is the schema version this build understands.
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 var (
 	ErrSchemaTooNew = errors.New("baza de date are o versiune de schemă mai nouă decât această aplicație")

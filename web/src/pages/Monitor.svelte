@@ -19,13 +19,23 @@
     return 'severity';
   }
 
+  function storedCompact(): boolean {
+    try {
+      return localStorage.getItem('nw-compact') !== '0';
+    } catch {
+      return true;
+    }
+  }
+
   let filter = $state<Set<State>>(new Set());
   let query = $state('');
   let sort = $state<SortMode>(storedSort());
+  let compact = $state(storedCompact());
 
   $effect(() => {
     try {
       localStorage.setItem('nw-sort', sort);
+      localStorage.setItem('nw-compact', compact ? '1' : '0');
     } catch {
       /* ignore */
     }
@@ -38,7 +48,7 @@
 
 <div class="page monitor">
   <h1 class="sr-only">Monitorizare</h1>
-  <TopBar bind:filter bind:query bind:sort />
+  <TopBar bind:filter bind:query bind:sort bind:compact />
   {#if live.loaded && live.locations.length === 0}
     <p class="notice">Nu există locații configurate. <a href="/administrare">Adăugați locații din Administrare.</a></p>
   {:else if live.loaded && shown.length === 0}
@@ -46,7 +56,7 @@
   {/if}
   <div class="grid">
     {#each shown as loc (loc.id)}
-      <LocationCard {loc} />
+      <LocationCard {loc} {compact} />
     {/each}
   </div>
 </div>

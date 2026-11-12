@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/export"
-	"netwatch/internal/stats"
+	"sismon/internal/apperr"
+	"sismon/internal/export"
+	"sismon/internal/stats"
 )
 
 var exportTypes = map[string]string{
@@ -108,7 +108,7 @@ func (p *public) exportStats(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	name := fmt.Sprintf("netwatch-statistici-%s.%s", now.In(export.Zone).Format("20060102-1504"), format)
+	name := fmt.Sprintf("sismon-statistici-%s.%s", now.In(export.Zone).Format("20060102-1504"), format)
 	attachment(w, format, name, buf.Bytes())
 }
 
@@ -134,7 +134,7 @@ func (a *admin) exportLocations(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	attachment(w, format, fmt.Sprintf("netwatch-locatii-%s.%s", a.d.Now().In(export.Zone).Format("20060102"), format), buf.Bytes())
+	attachment(w, format, fmt.Sprintf("sismon-locatii-%s.%s", a.d.Now().In(export.Zone).Format("20060102"), format), buf.Bytes())
 }
 
 // exportLocationsFile maps /api/admin/export/locations.{csv|xlsx}.

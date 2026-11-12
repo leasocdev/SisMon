@@ -3,7 +3,7 @@ package monitor
 import (
 	"time"
 
-	"netwatch/internal/monitor/icmp"
+	"sismon/internal/monitor/icmp"
 )
 
 // Result is one completed check of a device configuration revision.

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"netwatch/internal/state"
+	"sismon/internal/state"
 )
 
 func ts(sec int64) time.Time { return time.Unix(1_800_000_000+sec, 0) }

@@ -1,4 +1,4 @@
-// Package config loads startup options from netwatch.toml and flags.
+// Package config loads startup options from sismon.toml and flags.
 package config
 
 import (
@@ -36,7 +36,7 @@ type multi []string
 func (m *multi) String() string     { return strings.Join(*m, ",") }
 func (m *multi) Set(v string) error { *m = append(*m, v); return nil }
 
-// Load parses flags, then overlays them on <data>/netwatch.toml.
+// Load parses flags, then overlays them on <data>/sismon.toml.
 func Load(fs *flag.FlagSet, args []string) (Config, error) {
 	var c Config
 	var proxies multi
@@ -57,8 +57,8 @@ func Load(fs *flag.FlagSet, args []string) (Config, error) {
 	}
 	c.DataDir = abs
 	var fc fileConfig
-	if _, err := toml.DecodeFile(filepath.Join(c.DataDir, "netwatch.toml"), &fc); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return c, fmt.Errorf("netwatch.toml: %w", err)
+	if _, err := toml.DecodeFile(filepath.Join(c.DataDir, "sismon.toml"), &fc); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return c, fmt.Errorf("sismon.toml: %w", err)
 	}
 	apply := func(name string, dst *string, v *string) {
 		if v != nil && !set[name] {

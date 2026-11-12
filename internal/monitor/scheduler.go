@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/monitor/icmp"
+	"sismon/internal/monitor/icmp"
 )
 
 // Target is one device configuration to check periodically.

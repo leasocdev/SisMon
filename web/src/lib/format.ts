@@ -25,6 +25,7 @@ const AUDIT: Record<string, string> = {
   import: 'Import de locații',
   logo: 'Logo încărcat',
   logo_delete: 'Logo eliminat',
+  enable_device_auto: 'Echipament reactivat automat',
 };
 
 export function auditAction(a: string): string {

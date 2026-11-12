@@ -13,9 +13,9 @@ import (
 
 func TestArtifactName(t *testing.T) {
 	for in, want := range map[[2]string]string{
-		{"windows", "amd64"}: "netwatch-windows-amd64.exe",
-		{"linux", "amd64"}:   "netwatch-linux-amd64",
-		{"linux", "arm64"}:   "netwatch-linux-arm64",
+		{"windows", "amd64"}: "sismon-windows-amd64.exe",
+		{"linux", "amd64"}:   "sismon-linux-amd64",
+		{"linux", "arm64"}:   "sismon-linux-arm64",
 	} {
 		if got := artifactName(in[0], in[1]); got != want {
 			t.Errorf("%v → %s", in, got)

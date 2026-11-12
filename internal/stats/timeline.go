@@ -3,12 +3,13 @@ package stats
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/live"
-	"netwatch/internal/state"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/live"
+	"sismon/internal/state"
+	"sismon/internal/store"
 )
 
 // Segment is a contiguous state span (ms).
@@ -78,18 +79,26 @@ type Report24 struct {
 	To          int64         `json:"to"`
 	Locations   int           `json:"locations"`
 	AffectedNow int           `json:"affected_now"`
-	Current     []CurrentDown `json:"current"`
+	Current     []CurrentDown `json:"current"`         // o intrare per locație, cele mai vechi căderi primele
 	Incidents   []IncidentRow `json:"incidents"`       // doar echipamente primare
 	Minor       []IncidentRow `json:"minor_incidents"` // echipamente secundare
 }
 
-// CurrentDown is a primary device that is down right now.
+// CurrentDown is a location that is unavailable right now: its primary
+// devices that are down, with the earliest start.
 type CurrentDown struct {
-	LocationID int64  `json:"location_id"`
-	Location   string `json:"location"`
-	DeviceID   int64  `json:"device_id"`
-	Device     string `json:"device"`
-	Since      int64  `json:"since"`
+	LocationID int64           `json:"location_id"`
+	Location   string          `json:"location"`
+	Since      int64           `json:"since"`
+	Devices    []CurrentDevice `json:"devices"`
+}
+
+// CurrentDevice is a primary device that is down right now.
+type CurrentDevice struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	ErrorCode string `json:"error_code"`
+	Since     int64  `json:"since"`
 }
 
 // BuildReport24 builds the last-24-hours report from a live snapshot.
@@ -111,8 +120,8 @@ func BuildReport24(ctx context.Context, st *store.Store, snap live.Snapshot, now
 			out.Minor = append(out.Minor, i)
 		}
 	}
-	affected := map[int64]bool{}
 	for _, l := range snap.Locations {
+		var cur *CurrentDown
 		for _, d := range l.Devices {
 			if !d.Primary || d.State != state.Down {
 				continue
@@ -122,10 +131,17 @@ func BuildReport24(ctx context.Context, st *store.Store, snap live.Snapshot, now
 			if err := st.DB.QueryRowContext(ctx, `SELECT observed_at FROM incidents WHERE device_id=? AND ended_at IS NULL`, d.ID).Scan(&obs); err == nil && obs.Valid {
 				since = obs.Int64
 			}
-			out.Current = append(out.Current, CurrentDown{LocationID: l.ID, Location: l.Name, DeviceID: d.ID, Device: d.Name, Since: since})
-			affected[l.ID] = true
+			if cur == nil {
+				cur = &CurrentDown{LocationID: l.ID, Location: l.Name, Since: since}
+			}
+			cur.Since = min(cur.Since, since)
+			cur.Devices = append(cur.Devices, CurrentDevice{ID: d.ID, Name: d.Name, ErrorCode: d.ErrorCode, Since: since})
+		}
+		if cur != nil {
+			out.Current = append(out.Current, *cur)
 		}
 	}
-	out.AffectedNow = len(affected)
+	sort.SliceStable(out.Current, func(i, j int) bool { return out.Current[i].Since < out.Current[j].Since })
+	out.AffectedNow = len(out.Current)
 	return out, nil
 }

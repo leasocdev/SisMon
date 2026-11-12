@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { emptyLocation, fieldPath, isDirty, moveDevice, parseCoord, toInput, toPayload } from './editor';
+import { emptyLocation, fieldPath, isDirty, moveDevice, parseCoord, primariesDisabled, toInput, toPayload } from './editor';
 import type { AdminLocation } from './types';
 
 const loc: AdminLocation = {
   id: 3, name: 'Cahul', address: 'str. 1', notes: '', lat: 45.9, lon: 28.19, sort_order: 0,
   devices: [
-    { id: 7, location_id: 3, rev: 1, name: 'Router', host: '10.0.1.1', kind: 'Router', is_primary: true, sort_order: 0, overrides: {} },
-    { id: 8, location_id: 3, rev: 1, name: 'AP', host: '10.0.1.2', kind: 'Radiolink', is_primary: false, sort_order: 1, overrides: { failures: 5 } },
+    { id: 7, location_id: 3, rev: 1, name: 'Router', host: '10.0.1.1', kind: 'Router', is_primary: true, sort_order: 0, overrides: {}, disabled: false, disabled_at: null, disabled_until: null },
+    { id: 8, location_id: 3, rev: 1, name: 'AP', host: '10.0.1.2', kind: 'Radiolink', is_primary: false, sort_order: 1, overrides: { failures: 5 }, disabled: true, disabled_at: 1, disabled_until: 9_000 },
   ],
 };
 
@@ -51,5 +51,18 @@ describe('editor', () => {
     const p = toPayload(x);
     expect(p.devices[0].overrides).toEqual({ failures: 4 });
     expect('id' in p.devices[0]).toBe(true);
+  });
+  it('dezactivarea: data se păstrează doar cât timp echipamentul e dezactivat', () => {
+    const x = toInput(loc);
+    expect(x.devices[1]).toMatchObject({ disabled: true, disabled_until: 9_000 });
+    expect(toPayload(x).devices[1].disabled_until).toBe(9_000);
+    x.devices[1].disabled = false;
+    expect(toPayload(x).devices[1]).toMatchObject({ disabled: false, disabled_until: null });
+    expect(isDirty(toInput(loc), x)).toBe(true);
+  });
+  it('primariesDisabled', () => {
+    expect(primariesDisabled([{ is_primary: true, disabled: true }, { is_primary: false, disabled: false }])).toBe(true);
+    expect(primariesDisabled([{ is_primary: true, disabled: true }, { is_primary: true, disabled: false }])).toBe(false);
+    expect(primariesDisabled([{ is_primary: false, disabled: true }])).toBe(false);
   });
 });

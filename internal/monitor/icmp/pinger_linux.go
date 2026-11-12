@@ -70,7 +70,7 @@ func (p *linuxPinger) Ping(ctx context.Context, addr netip.Addr, packets int, ti
 		if v6 {
 			typ, proto = ipv6.ICMPTypeEchoRequest, 58
 		}
-		msg := xicmp.Message{Type: typ, Body: &xicmp.Echo{ID: id, Seq: seq, Data: []byte("NetWatch")}}
+		msg := xicmp.Message{Type: typ, Body: &xicmp.Echo{ID: id, Seq: seq, Data: []byte("SisMon")}}
 		b, err := msg.Marshal(nil)
 		if err != nil {
 			return 0, Internal

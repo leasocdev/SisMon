@@ -1,7 +1,7 @@
 // Package live keeps the current state in memory and fans out changes.
 package live
 
-import "netwatch/internal/state"
+import "sismon/internal/state"
 
 // DeviceView is the live state of one device.
 type DeviceView struct {

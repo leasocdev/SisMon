@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"netwatch/internal/settings"
+	"sismon/internal/settings"
 )
 
 // richTextBomb builds a small XLSX whose 1000×100 cells all point to one

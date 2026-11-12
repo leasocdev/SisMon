@@ -70,7 +70,7 @@
   {:else}
     <div class="page">
       <h1>Administrare</h1>
-      <p class="notice warn">Parola nu este configurată. Rulați pe server: <code>netwatch set-password</code></p>
+      <p class="notice warn">Parola nu este configurată. Rulați pe server: <code>sismon set-password</code></p>
     </div>
   {/if}
 {:else if !session.info.authenticated && !session.expired}

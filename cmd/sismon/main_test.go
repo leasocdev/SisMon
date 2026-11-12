@@ -10,7 +10,7 @@ func TestVersionCommand(t *testing.T) {
 	if code := run([]string{"version"}, nil, &out, &out); code != 0 {
 		t.Fatalf("exit code %d", code)
 	}
-	if out.String() != "NetWatch 1.5.0-dev\n" {
+	if out.String() != "SisMon 1.6.0-dev\n" {
 		t.Fatalf("got %q", out.String())
 	}
 }

@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"netwatch/internal/branding"
+	"sismon/internal/branding"
 )
 
 func (a *admin) uploadLogo(w http.ResponseWriter, r *http.Request) {

@@ -5,7 +5,7 @@
 *.db-wal
 *.db-shm
 *.exe
-/netwatch
+/sismon
 node_modules/
 /internal/webui/dist/*
 !/internal/webui/dist/.gitkeep

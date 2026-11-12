@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/live"
-	"netwatch/internal/stats"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/live"
+	"sismon/internal/stats"
+	"sismon/internal/store"
 )
 
 type public struct{ d Deps }

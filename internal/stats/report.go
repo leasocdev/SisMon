@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"netwatch/internal/state"
-	"netwatch/internal/store"
+	"sismon/internal/state"
+	"sismon/internal/store"
 )
 
 // Durations are seconds spent in each state.
@@ -66,20 +66,10 @@ type IncidentRow struct {
 	DurationS   float64 `json:"duration_s"`
 }
 
-// Summary aggregates the whole report.
-type Summary struct {
-	Availability *float64 `json:"availability"`
-	Coverage     *float64 `json:"coverage"`
-	Incidents    int      `json:"incidents"`
-	DownS        float64  `json:"down_s"`
-	MTTRS        *float64 `json:"mttr_s"`
-}
-
 // Report is the statistics result.
 type Report struct {
 	From      int64         `json:"from"`
 	To        int64         `json:"to"`
-	Summary   Summary       `json:"summary"`
 	Devices   []DeviceRow   `json:"devices"`
 	Locations []LocationRow `json:"locations"`
 	Incidents []IncidentRow `json:"incidents"`
@@ -232,8 +222,6 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 	}
 	rows.Close()
 
-	var sumUp, sumDown, sumKnown, sumEligible, mttrSum float64
-	var mttrN int
 	byDevice := map[int64]int{}
 	for i := range devs {
 		dm := &devs[i]
@@ -248,7 +236,6 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 		if dm.row.LatencyMs, dm.row.LossPct, err = latencyAvg(ctx, tx, dm.row.ID, dm.w); err != nil {
 			return rep, err
 		}
-		sumUp, sumDown, sumKnown, sumEligible = sumUp+d.Up, sumDown+d.Down, sumKnown+d.known(), sumEligible+elig
 
 		inc, err := tx.QueryContext(ctx, `SELECT id,observed_at,confirmed_at,ended_at,COALESCE(end_reason,'') FROM incidents
 			WHERE device_id=? AND observed_at<? AND (ended_at IS NULL OR ended_at>?) ORDER BY observed_at DESC`, dm.row.ID, dm.w.b, dm.w.a)
@@ -290,7 +277,6 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 		if devMttrN > 0 {
 			v := devMttr / float64(devMttrN)
 			dm.row.MTTRS = &v
-			mttrSum, mttrN = mttrSum+devMttr, mttrN+devMttrN
 		}
 		byDevice[dm.row.ID] = i
 		rep.Devices = append(rep.Devices, dm.row)
@@ -311,10 +297,5 @@ func Build(ctx context.Context, st *store.Store, q Query, now time.Time) (Report
 		rep.Locations = append(rep.Locations, row)
 	}
 	sort.SliceStable(rep.Incidents, func(i, j int) bool { return rep.Incidents[i].ObservedAt > rep.Incidents[j].ObservedAt })
-	rep.Summary = Summary{Availability: pct(sumUp, sumUp+sumDown), Coverage: pct(sumKnown, sumEligible), Incidents: len(rep.Incidents), DownS: sumDown}
-	if mttrN > 0 {
-		v := mttrSum / float64(mttrN)
-		rep.Summary.MTTRS = &v
-	}
 	return rep, nil
 }

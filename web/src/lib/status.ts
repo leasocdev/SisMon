@@ -112,3 +112,28 @@ export function filterLocations<T extends Pick<LocationView, 'name' | 'state' | 
     return l.devices.some((d) => fold(d.name).includes(needle) || d.host.toLowerCase().includes(needle));
   });
 }
+
+type CardDevice = { state: State; pending: State | ''; is_primary: boolean };
+
+function deviceRank(d: CardDevice): number {
+  const s = severity(d.state);
+  // Echipamentele „în confirmare" vin după cele cu probleme, dar înaintea celor funcționale.
+  return s === 3 && pendingText(d) ? 2.5 : s;
+}
+
+/** Devices to show on a location card: problems first (stable, otherwise in
+ * configured order). In compact mode a functional location keeps only its
+ * primary devices plus any device that is not up or is pending; `hidden` is how
+ * many were left out. */
+export function cardDevices<T extends CardDevice>(locState: State, devices: T[], compact: boolean): { shown: T[]; hidden: number } {
+  let list = devices;
+  if (compact && locState === 'up') {
+    const keep = devices.filter((d) => d.is_primary || d.state !== 'up' || pendingText(d) !== '');
+    if (keep.length) list = keep;
+  }
+  const shown = list
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => deviceRank(a.d) - deviceRank(b.d) || a.i - b.i)
+    .map((x) => x.d);
+  return { shown, hidden: devices.length - shown.length };
+}

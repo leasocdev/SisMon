@@ -88,7 +88,7 @@ describe('LiveStore', () => {
   let localNow = 1_000_000;
   const state: StateResponse = {
     epoch: 10, seq: 5, locations: [loc(1), loc(2)], health,
-    identity: { name: 'NetWatch', subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version: 't', now: 1_060_000, demo: false,
+    identity: { name: 'SisMon', subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 60, version: 't', now: 1_060_000, demo: false,
   };
   function deps(): LiveDeps {
     return {
@@ -109,7 +109,7 @@ describe('LiveStore', () => {
     const s = new LiveStore(deps());
     await s.start();
     expect(s.locations).toHaveLength(2);
-    expect(s.identity.name).toBe('NetWatch');
+    expect(s.identity.name).toBe('SisMon');
     expect(FakeES.instances[0].url).toBe('/api/events?last=10-5');
     expect(s.clockOffset).toBe(60_000);
     expect(fmtSince(s.serverNow() - 60_000, s.serverNow())).toBe('de 1 min');

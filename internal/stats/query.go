@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"netwatch/internal/apperr"
+	"sismon/internal/apperr"
 )
 
 // MaxPeriod is the longest period a report may cover.
@@ -100,6 +100,8 @@ func ReasonText(code string) string {
 		return "Configurație modificată"
 	case "archived":
 		return "Arhivat"
+	case "disabled":
+		return "Echipament dezactivat"
 	case "":
 		return "În curs"
 	}

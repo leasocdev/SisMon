@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"netwatch/internal/auth"
+	"sismon/internal/auth"
 )
 
 const testPassword = "parola-de-test-123"
@@ -263,7 +263,7 @@ func TestBackupDownloadRejectsTraversal(t *testing.T) {
 	s := newServer(t)
 	s.setPassword(t)
 	a := login(t, s)
-	if c, _ := a.do("GET", "/api/admin/backups/..%5Cnetwatch.db", nil, false); c != 400 {
+	if c, _ := a.do("GET", "/api/admin/backups/..%5Csismon.db", nil, false); c != 400 {
 		t.Fatal(c)
 	}
 	if c, b := a.do("POST", "/api/admin/backups", map[string]any{}, true); c != 200 || !strings.Contains(b, "manual") {

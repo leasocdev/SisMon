@@ -69,7 +69,7 @@ const EMPTY_HEALTH: Health = {
 export class LiveStore {
   locations = $state<LocationView[]>([]);
   health = $state<Health>(EMPTY_HEALTH);
-  identity = $state<Identity>({ name: 'NetWatch', subtitle: 'NETWORK MONITOR', report_title: 'Raport de disponibilitate', logo_version: 0 });
+  identity = $state<Identity>({ name: 'SisMon', subtitle: 'NETWORK MONITOR', report_title: 'Raport de disponibilitate', logo_version: 0 });
   intervalS = $state(60);
   rotationS = $state(0);
   dispatchTheme = $state<DispatchTheme>('dark');

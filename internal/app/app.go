@@ -1,4 +1,4 @@
-// Package app assembles and runs the whole NetWatch server.
+// Package app assembles and runs the whole SisMon server.
 package app
 
 import (
@@ -15,21 +15,21 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/api"
-	"netwatch/internal/auth"
-	"netwatch/internal/branding"
-	"netwatch/internal/config"
-	"netwatch/internal/jobs"
-	"netwatch/internal/live"
-	"netwatch/internal/lockfile"
-	"netwatch/internal/monitor"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
-	"netwatch/internal/tiles"
-	"netwatch/internal/tlsutil"
-	"netwatch/internal/version"
-	"netwatch/internal/webui"
+	"sismon/internal/api"
+	"sismon/internal/auth"
+	"sismon/internal/branding"
+	"sismon/internal/config"
+	"sismon/internal/jobs"
+	"sismon/internal/live"
+	"sismon/internal/lockfile"
+	"sismon/internal/monitor"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/store"
+	"sismon/internal/tiles"
+	"sismon/internal/tlsutil"
+	"sismon/internal/version"
+	"sismon/internal/webui"
 )
 
 // Options inject dependencies (tests, demo mode, embedded UI).
@@ -54,7 +54,7 @@ func defaultLookup(ctx context.Context, host string) ([]netip.Addr, error) {
 
 // OpenStore opens the database, backing it up before any migration.
 func OpenStore(ctx context.Context, dataDir string) (*store.Store, error) {
-	return store.Open(ctx, filepath.Join(dataDir, "netwatch.db"), store.Options{BeforeMigrate: func(s *store.Store, from, to int) error {
+	return store.Open(ctx, filepath.Join(dataDir, "sismon.db"), store.Options{BeforeMigrate: func(s *store.Store, from, to int) error {
 		_, err := jobs.NewBackupService(s, dataDir, settings.NewHolder(settings.Defaults())).Create(ctx, "pre-migrate")
 		return err
 	}})
@@ -159,7 +159,7 @@ func Run(ctx context.Context, cfg config.Config, opt Options) error {
 		}
 		errc <- nil
 	}()
-	slog.Info("NetWatch pornit", "versiune", version.Version, "adresa", ln.Addr().String(), "date", cfg.DataDir, "icmp", opt.Pinger.Mode())
+	slog.Info("SisMon pornit", "versiune", version.Version, "adresa", ln.Addr().String(), "date", cfg.DataDir, "icmp", opt.Pinger.Mode())
 	if opt.Ready != nil {
 		opt.Ready(ln.Addr().String())
 	}

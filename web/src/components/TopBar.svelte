@@ -8,7 +8,8 @@
     filter = $bindable(),
     query = $bindable(),
     sort = $bindable(),
-  }: { filter: Set<State>; query: string; sort: SortMode } = $props();
+    compact = $bindable(),
+  }: { filter: Set<State>; query: string; sort: SortMode; compact: boolean } = $props();
 
   // „Funcționale" primul în bara de filtre.
   const ORDER: State[] = ['up', ...STATES.filter((s) => s !== 'up')];
@@ -50,6 +51,14 @@
     <span class="sr-only">Căutare (nume, echipament, IP)</span>
     <input bind:this={search} type="search" placeholder="Căutare (nume, IP) — tasta /" bind:value={query} aria-label="Căutare (nume, echipament, IP)" />
   </label>
+  <button
+    type="button"
+    class="compact"
+    class:on={compact}
+    aria-pressed={compact}
+    title="Locațiile funcționale arată doar echipamentele primare"
+    onclick={() => (compact = !compact)}>Compact</button
+  >
   <label class="sort">
     Ordine
     <select bind:value={sort}>
@@ -90,7 +99,8 @@
     gap: 6px;
     align-items: center;
   }
-  .tot.on {
+  .tot.on,
+  .compact.on {
     border-color: var(--focus);
     box-shadow: inset 0 0 0 1px var(--focus);
     font-weight: 600;
@@ -112,8 +122,10 @@
     width: 260px;
     max-width: 100%;
   }
-  .sort {
+  .compact {
     margin-left: auto;
+  }
+  .sort {
     display: inline-flex;
     gap: 6px;
     align-items: center;

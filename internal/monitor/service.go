@@ -2,16 +2,17 @@ package monitor
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/domain"
-	"netwatch/internal/live"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
-	"netwatch/internal/store"
+	"sismon/internal/apperr"
+	"sismon/internal/domain"
+	"sismon/internal/live"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
+	"sismon/internal/store"
 )
 
 // Workers is the maximum number of concurrent checks.
@@ -64,6 +65,9 @@ func (m *Service) targets(ctx context.Context) ([]Target, error) {
 	s := m.set.Get()
 	ts := make([]Target, 0, len(devs))
 	for _, d := range devs {
+		if d.Disabled {
+			continue
+		}
 		e, err := s.Apply(d.Overrides)
 		if err != nil {
 			e, _ = s.Apply(settings.Overrides{})
@@ -87,8 +91,26 @@ func (m *Service) Reload(ctx context.Context) error {
 	return m.hub.Load(ctx, m.st)
 }
 
+// enableExpired re-enables devices whose disable period ended and reloads.
+func (m *Service) enableExpired(ctx context.Context) {
+	n, err := m.st.EnableExpired(ctx, time.Now())
+	if err != nil {
+		slog.Error("reactivare echipamente", "err", err)
+		return
+	}
+	if n > 0 {
+		slog.Info("echipamente reactivate automat", "n", n)
+		if err := m.Reload(ctx); err != nil {
+			slog.Error("reîncărcare după reactivare", "err", err)
+		}
+	}
+}
+
 // Run starts the writer, the scheduler and periodic health reporting.
 func (m *Service) Run(ctx context.Context) error {
+	if _, err := m.st.EnableExpired(ctx, time.Now()); err != nil {
+		return err
+	}
 	if err := m.Reload(ctx); err != nil {
 		return err
 	}
@@ -107,6 +129,7 @@ func (m *Service) Run(ctx context.Context) error {
 			return <-errc
 		case <-tick.C:
 			m.hub.SetHealth(m.Health())
+			m.enableExpired(ctx)
 		}
 	}
 }

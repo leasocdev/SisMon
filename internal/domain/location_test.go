@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"netwatch/internal/apperr"
-	"netwatch/internal/settings"
+	"sismon/internal/apperr"
+	"sismon/internal/settings"
 )
 
 func TestValidHost(t *testing.T) {

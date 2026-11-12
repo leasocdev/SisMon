@@ -1,4 +1,4 @@
-// Command e2eserver runs a real NetWatch server with a scripted pinger and a
+// Command e2eserver runs a real SisMon server with a scripted pinger and a
 // control port, for the Playwright end-to-end tests. Not shipped.
 package main
 
@@ -22,12 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"netwatch/internal/app"
-	"netwatch/internal/auth"
-	"netwatch/internal/config"
-	"netwatch/internal/domain"
-	"netwatch/internal/monitor/icmp"
-	"netwatch/internal/settings"
+	"sismon/internal/app"
+	"sismon/internal/auth"
+	"sismon/internal/config"
+	"sismon/internal/domain"
+	"sismon/internal/monitor/icmp"
+	"sismon/internal/settings"
 )
 
 // Password is the administrator password of the seeded server.
@@ -231,7 +231,7 @@ func seed(dataDir string, password bool) error {
 }
 
 func main() {
-	listen := flag.String("listen", "127.0.0.1:18501", "adresa serverului NetWatch")
+	listen := flag.String("listen", "127.0.0.1:18501", "adresa serverului SisMon")
 	ctrlAddr := flag.String("control", "127.0.0.1:18502", "adresa portului de control")
 	noPassword := flag.Bool("no-password", false, "pornește fără parolă de administrator")
 	demoFlag := flag.Bool("demo-flag", false, "marchează serverul ca mod demonstrativ (banner)")
@@ -239,7 +239,7 @@ func main() {
 	flag.Parse()
 
 	cleanOld()
-	dataDir, err := os.MkdirTemp("", "netwatch-e2e-*")
+	dataDir, err := os.MkdirTemp("", "sismon-e2e-*")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func main() {
 
 // cleanOld removes data directories left by killed previous runs.
 func cleanOld() {
-	old, _ := filepath.Glob(filepath.Join(os.TempDir(), "netwatch-e2e-*"))
+	old, _ := filepath.Glob(filepath.Join(os.TempDir(), "sismon-e2e-*"))
 	for _, d := range old {
 		if fi, err := os.Stat(d); err == nil && time.Since(fi.ModTime()) > time.Hour {
 			os.RemoveAll(d)
