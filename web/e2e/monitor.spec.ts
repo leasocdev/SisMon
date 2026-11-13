@@ -108,13 +108,16 @@ test('mesajul de stare stă pe rândul numelui, fără să-l acopere', async ({ 
         const r = document.createRange();
         r.selectNodeContents(li.querySelector('.dname')!);
         const name = r.getBoundingClientRect();
-        const lines = r.getClientRects();
+        // Glyph boxes differ per font (the ★ may come from a fallback font with
+        // another ascent), so "one line" means every box overlaps the first one
+        // vertically, not that their tops are equal. Tiny boxes (the 1 px sr-only label) are skipped.
+        const lines = [...r.getClientRects()].filter((l) => l.width > 1 && l.height > 4);
         const msg = li.querySelector('.msg')!.getBoundingClientRect();
         const host = li.querySelector('.host')!.getBoundingClientRect();
         const hostHidden = getComputedStyle(li.querySelector('.host')!).opacity === '0';
         return {
           mode: ['between', 'cover', 'below'].find((m) => li.classList.contains(m)),
-          nameOneLine: [...lines].every((l) => Math.abs(l.top - lines[0].top) < 2),
+          nameOneLine: lines.every((l) => l.top < lines[0].bottom - 2 && l.bottom > lines[0].top + 2),
           sameLine: Math.abs((msg.top + msg.bottom) / 2 - (name.top + name.bottom) / 2) < 3,
           clearOfName: msg.left >= name.right - 0.5,
           ipOk: hostHidden || msg.right <= host.left + 0.5,
