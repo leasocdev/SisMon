@@ -63,3 +63,19 @@ func TestExportConcurrencyLimit(t *testing.T) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 }
+
+// Review fix: the export slot is released once the file is built, so a
+// client that never reads the response cannot block other exports.
+func TestExportReleasesSlotBeforeWriting(t *testing.T) {
+	s := newServer(t)
+	s.d.exportSem = make(chan struct{}, 1)
+	s.h = build(s.d, nil)
+	for i := 0; i < 3; i++ {
+		if w := s.do("GET", "/api/export/csv", nil, nil); w.Code != 200 {
+			t.Fatal(i, w.Code, w.Body.String())
+		}
+	}
+	if n := len(s.d.exportSem); n != 0 {
+		t.Fatalf("export slot still held: %d", n)
+	}
+}

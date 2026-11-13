@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/subtle"
+	"log/slog"
 	"math"
 	"net"
 	"net/http"
@@ -202,13 +203,19 @@ func (a *admin) login(w http.ResponseWriter, r *http.Request) {
 	}
 	select {
 	case a.d.loginSem <- struct{}{}:
-		defer func() { <-a.d.loginSem }()
 	default:
 		w.Header().Set("Retry-After", "1")
 		writeError(w, &apperr.Error{Status: http.StatusServiceUnavailable, Message: "Serverul verifică alte autentificări. Reîncercați peste o secundă."})
 		return
 	}
-	if hash == "" || !auth.VerifyPassword(hash, b.Password) {
+	// The slot covers the argon2id check only, not the failure delay below:
+	// otherwise wrong guesses could keep the administrator from logging in.
+	ok := func() bool {
+		defer func() { <-a.d.loginSem }()
+		return hash != "" && auth.VerifyPassword(hash, b.Password)
+	}()
+	if !ok {
+		slog.Warn("autentificare eșuată", "ip", ci.IP.String())
 		a.d.Sleep(r.Context(), a.d.Limiter.Fail(ci.IP, now))
 		writeError(w, &apperr.Error{Status: http.StatusUnauthorized, Message: "Parolă incorectă sau administrator neconfigurat."})
 		return

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"sismon/internal/auth"
 )
@@ -430,5 +431,23 @@ func TestAdminLocationsOrder(t *testing.T) {
 	}
 	if got[created.ID] != 0 || got[s.loc] != 1 {
 		t.Fatalf("%+v", got)
+	}
+}
+
+// Review fix: the failure delay runs after the login slot is released, so
+// wrong guesses cannot keep the administrator out with 503 responses.
+func TestLoginFailureDelayDoesNotHoldSlot(t *testing.T) {
+	s := newServer(t)
+	s.setPassword(t)
+	s.d.loginSem = make(chan struct{}, 1)
+	var held int
+	s.d.Sleep = func(context.Context, time.Duration) { held = len(s.d.loginSem) }
+	s.h = build(s.d, nil)
+	w := s.do("POST", "/api/admin/login", map[string]string{"password": "parola-gresita-123"}, origin)
+	if w.Code != 401 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	if held != 0 {
+		t.Fatal("login slot held during the failure delay")
 	}
 }

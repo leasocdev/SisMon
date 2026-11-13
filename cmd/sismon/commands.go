@@ -98,6 +98,9 @@ func cmdService(action string, args []string, stdout, stderr io.Writer) int {
 		if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 			return fail(stderr, err)
 		}
+		if err := fsown.Protect(cfg.DataDir); err != nil {
+			fmt.Fprintln(stderr, "Avertisment:", err)
+		}
 	}
 	if err := svc.Control(action, cfg); err != nil {
 		return fail(stderr, fmt.Errorf("%s: %w (rulați ca administrator/root?)", action, err))

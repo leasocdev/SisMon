@@ -34,6 +34,9 @@ export function applyEvent(st: LiveData, type: string, data: unknown, id: string
 
 export const STALE_MS = 30_000;
 
+/** Minimum pause between two retries of a failed /api/state fetch. */
+export const STATE_RETRY_MS = 5_000;
+
 /** Monitor warning: the server's own, or a missing/old last cycle (> 2 intervals). */
 export function healthWarning(h: Health | null, intervalS: number, serverNow: number, startedAt = serverNow): string {
   if (!h) return '';
@@ -92,6 +95,11 @@ export class LiveStore {
   private retry: ReturnType<typeof setTimeout> | null = null;
   private backoff = 2000;
   private listeners = new Set<ChangeFn>();
+  /** /api/state (identity, settings, version) must be (re)fetched: the last
+   * attempt failed, the server restarted or the configuration changed. */
+  private needState = false;
+  private stateBusy = false;
+  private stateTriedAt = 0;
   private deps: LiveDeps;
   private running = false;
 
@@ -141,6 +149,8 @@ export class LiveStore {
     } catch {
       this.loadError = 'Serverul nu răspunde. Se reîncearcă…';
       this.startedAt = this.serverNow();
+      this.needState = true; // retried on the next stream message
+      this.stateTriedAt = this.deps.now();
     }
     this.connect();
   }
@@ -152,6 +162,24 @@ export class LiveStore {
     if (this.timer) clearInterval(this.timer);
     if (this.retry) clearTimeout(this.retry);
     this.timer = this.retry = null;
+  }
+
+  /** Refetches /api/state when needed; retried on later stream messages
+   * (at most every STATE_RETRY_MS) until it succeeds. */
+  private refreshState(force = false): void {
+    if (!this.needState || this.stateBusy) return;
+    const now = this.deps.now();
+    if (!force && now - this.stateTriedAt < STATE_RETRY_MS) return;
+    this.stateBusy = true;
+    this.stateTriedAt = now;
+    this.fetchState()
+      .then(() => {
+        this.needState = false;
+      })
+      .catch(() => {})
+      .finally(() => {
+        this.stateBusy = false;
+      });
   }
 
   /** Identity, interval and version; reloads the page when the server version changed. */
@@ -207,6 +235,13 @@ export class LiveStore {
       } catch {
         return;
       }
+      if (type === 'config') {
+        // settings or identity changed: the dispatcher picks them up at once
+        this.needState = true;
+        this.refreshState(true);
+        return;
+      }
+      this.refreshState();
       if (type === 'ping') {
         const now = (data as { now?: number }).now;
         if (typeof now === 'number') this.clockOffset = now - this.deps.now();
@@ -222,13 +257,17 @@ export class LiveStore {
         const snap = data as Snapshot;
         this.health = snap.health;
         notify = this.loaded; // nothing shown yet: no alarms for the initial picture
-        if (this.epoch && snap.epoch !== this.epoch) this.fetchState().catch(() => {}); // server restarted
+        if (this.epoch && snap.epoch !== this.epoch) {
+          // server restarted (maybe upgraded): new identity, settings or UI version
+          this.needState = true;
+          this.refreshState(true);
+        }
         this.loaded = true;
         this.loadError = '';
       }
       this.set(applyEvent({ locations: this.locations, epoch: this.epoch, lastId: this.lastId }, type, data, e.lastEventId), notify);
     };
-    for (const t of ['snapshot', 'state', 'removed', 'health', 'ping']) es.addEventListener(t, handle(t));
+    for (const t of ['snapshot', 'state', 'removed', 'health', 'ping', 'config']) es.addEventListener(t, handle(t));
     es.onopen = () => {
       seen();
       this.connected = true;

@@ -65,22 +65,34 @@ func (p *Program) Stop(service.Service) error {
 }
 
 func serviceConfig(cfg config.Config) *service.Config {
-	args := []string{"run", "--data", cfg.DataDir, "--listen", cfg.Listen}
-	if cfg.TLS != "" {
-		args = append(args, "--tls", cfg.TLS)
-		if cfg.TLS == "files" {
-			args = append(args, "--tls-cert", cfg.TLSCert, "--tls-key", cfg.TLSKey)
-		}
-	}
-	for _, p := range cfg.TrustedProxies {
-		args = append(args, "--trusted-proxy", p)
-	}
 	c := &service.Config{Name: "SisMon", DisplayName: "SisMon", Description: "SisMon — monitorizarea rețelei (ICMP)",
-		Arguments: args, Option: service.KeyValue{"SystemdScript": systemdScript, "StartType": "automatic", "OnFailure": "restart"}}
+		Arguments: serviceArgs(cfg), Option: service.KeyValue{"SystemdScript": systemdScript, "StartType": "automatic", "OnFailure": "restart"}}
 	if service.Platform() == "linux-systemd" {
 		c.UserName = "sismon"
 	}
 	return c
+}
+
+// serviceArgs is the service command line: the data directory plus only the
+// options given explicitly to `install`. Everything else is read from
+// sismon.toml at each start, so editing it and restarting takes effect.
+func serviceArgs(cfg config.Config) []string {
+	args := []string{"run", "--data", cfg.DataDir}
+	str := func(name, v string) {
+		if cfg.Explicit[name] {
+			args = append(args, "--"+name, v)
+		}
+	}
+	str("listen", cfg.Listen)
+	str("tls", cfg.TLS)
+	str("tls-cert", cfg.TLSCert)
+	str("tls-key", cfg.TLSKey)
+	if cfg.Explicit["trusted-proxy"] {
+		for _, p := range cfg.TrustedProxies {
+			args = append(args, "--trusted-proxy", p)
+		}
+	}
+	return args
 }
 
 func newService(cfg config.Config, opt app.Options) (service.Service, *Program, error) {

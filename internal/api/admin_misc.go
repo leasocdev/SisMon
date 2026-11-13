@@ -25,6 +25,7 @@ func (a *admin) putSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	a.d.Hub.ConfigChanged()
 	if err := a.d.Store.Audit(r.Context(), a.d.Store.DB, "settings", "settings", 0, s, a.d.Now()); err != nil {
 		writeError(w, err)
 		return
@@ -71,6 +72,7 @@ func (a *admin) putIdentity(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	a.d.Hub.ConfigChanged()
 	if err := a.d.Store.Audit(r.Context(), a.d.Store.DB, "identity", "identity", 0, cur, a.d.Now()); err != nil {
 		writeError(w, err)
 		return
@@ -153,6 +155,9 @@ func (a *admin) createBackup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, info)
 }
 
+// BackupDownloadTimeout bounds the download of one backup file.
+const BackupDownloadTimeout = 30 * time.Minute
+
 func (a *admin) downloadBackup(w http.ResponseWriter, r *http.Request) {
 	f, info, err := a.d.Backups.Open(r.PathValue("name"))
 	if err != nil {
@@ -160,6 +165,9 @@ func (a *admin) downloadBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close()
+	// A backup can be large (hundreds of MB): allow more than the server's
+	// default write timeout. The route is reachable only by the administrator.
+	http.NewResponseController(w).SetWriteDeadline(a.d.Now().Add(BackupDownloadTimeout))
 	w.Header().Set("Content-Type", "application/vnd.sqlite3")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, info.Name))
 	http.ServeContent(w, r, info.Name, time.UnixMilli(info.Created), f)

@@ -8,8 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"sismon/internal/apperr"
 	"sismon/internal/live"
 )
+
+// sseWriteTimeout bounds one write (and flush) of the event stream.
+const sseWriteTimeout = 30 * time.Second
 
 func writeEvent(w http.ResponseWriter, epoch int64, seq uint64, typ string, data any) error {
 	b, err := json.Marshal(data)
@@ -48,13 +52,24 @@ func (p *public) events(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "streaming nesuportat", http.StatusInternalServerError)
 		return
 	}
+	ip := p.d.Proxy.Client(r).IP
+	if !p.d.sse.acquire(ip) {
+		w.Header().Set("Retry-After", "30")
+		writeError(w, &apperr.Error{Status: http.StatusServiceUnavailable, Message: "Prea multe conexiuni în timp real deschise; reîncercați mai târziu."})
+		return
+	}
+	defer p.d.sse.release(ip)
 	h := w.Header()
 	h.Set("Content-Type", "text/event-stream")
 	h.Set("Cache-Control", "no-cache")
 	h.Set("X-Accel-Buffering", "no")
 	h.Set("Connection", "keep-alive")
-	// SSE responses are long-lived: lift the server write deadline if any.
-	http.NewResponseController(w).SetWriteDeadline(time.Time{})
+	// SSE responses are long-lived: instead of the server-wide write
+	// deadline, every write gets its own, so a client that stops reading
+	// releases its stream instead of blocking the handler forever.
+	rc := http.NewResponseController(w)
+	deadline := func() { rc.SetWriteDeadline(p.d.Now().Add(sseWriteTimeout)) }
+	deadline()
 
 	hub := p.d.Hub
 	epoch := hub.Epoch()
@@ -87,6 +102,7 @@ func (p *public) events(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case <-ping.C:
+			deadline()
 			if err := writePing(w, p.d.Now()); err != nil {
 				return
 			}
@@ -95,6 +111,7 @@ func (p *public) events(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return // fell behind: the client reconnects and gets a snapshot
 			}
+			deadline()
 			if err := writeEvent(w, epoch, e.Seq, e.Type, e.Data); err != nil {
 				return
 			}

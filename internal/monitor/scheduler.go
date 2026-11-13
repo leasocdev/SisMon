@@ -112,10 +112,11 @@ func (s *Scheduler) Run(ctx context.Context) {
 			if !e.next.After(now) {
 				e.running = true
 				wg.Add(1)
-				go func(e *entry, due time.Time) {
+				// e.t is copied under s.mu: SetTargets may replace it while the check runs.
+				go func(e *entry, t Target, due time.Time) {
 					defer wg.Done()
-					s.check(ctx, e, due)
-				}(e, e.next)
+					s.check(ctx, e, t, due)
+				}(e, e.t, e.next)
 				continue
 			}
 			if d := e.next.Sub(now); d < wait {
@@ -139,7 +140,7 @@ func (s *Scheduler) Run(ctx context.Context) {
 	}
 }
 
-func (s *Scheduler) check(ctx context.Context, e *entry, due time.Time) {
+func (s *Scheduler) check(ctx context.Context, e *entry, t Target, due time.Time) {
 	select {
 	case s.sem <- struct{}{}:
 	case <-ctx.Done():
@@ -149,7 +150,6 @@ func (s *Scheduler) check(ctx context.Context, e *entry, due time.Time) {
 		return
 	}
 	start := time.Now()
-	t := e.t
 	res := Result{DeviceID: t.DeviceID, Rev: t.Rev}
 	addr, warn, err := s.r.Resolve(ctx, t.Host)
 	if err != nil {
@@ -181,7 +181,7 @@ func (s *Scheduler) check(ctx context.Context, e *entry, due time.Time) {
 	}
 	s.last = end
 	e.running = false
-	n := due.Add(t.Interval)
+	n := due.Add(e.t.Interval) // the current interval, which may have changed during the check
 	if n.Before(end) {
 		n = end
 	}

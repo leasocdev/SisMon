@@ -204,3 +204,65 @@ describe('LiveStore after a server restart', () => {
     s.stop();
   });
 });
+
+describe('LiveStore keeps /api/state current', () => {
+  let localNow = 1_000_000;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    FakeES.instances = [];
+    localNow = 1_000_000;
+  });
+  afterEach(() => vi.useRealTimers());
+
+  function mk(name: string, rotation: number): StateResponse {
+    return {
+      epoch: 10, seq: 1, locations: [loc(1)], health, dispatch_rotation_s: rotation,
+      identity: { name, subtitle: '', report_title: 'R', logo_version: 0 }, interval_s: 300, version: '1.0', now: localNow, demo: false,
+    };
+  }
+  const ok = (s: StateResponse) => new Response(JSON.stringify(s), { headers: { 'Content-Type': 'application/json' } });
+
+  // Review fix: a dispatcher started while the server was unreachable used to
+  // keep the default name, rotation and interval forever.
+  it('retries a failed initial /api/state on later stream messages', async () => {
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(new Response('x', { status: 502 }))
+      .mockResolvedValueOnce(new Response('x', { status: 502 }))
+      .mockResolvedValue(ok(mk('Rețea Nord', 60)));
+    const s = new LiveStore({ EventSource: FakeES as unknown as LiveDeps['EventSource'], fetch: fetchFn as unknown as typeof fetch, now: () => localNow });
+    await s.start();
+    expect(s.identity.name).toBe('SisMon');
+    const es = FakeES.instances[0];
+    es.emit('snapshot', { epoch: 10, seq: 1, locations: [loc(1)], health }, '10-1');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchFn).toHaveBeenCalledTimes(1); // throttled: tried less than 5 s ago
+    localNow += 6_000;
+    es.emit('health', health, '10-2');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchFn).toHaveBeenCalledTimes(2); // failed again
+    localNow += 6_000;
+    es.emit('health', health, '10-3');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+    expect(s.identity.name).toBe('Rețea Nord');
+    expect(s.rotationS).toBe(60);
+    expect(s.intervalS).toBe(300);
+    localNow += 6_000;
+    es.emit('health', health, '10-4');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchFn).toHaveBeenCalledTimes(3); // loaded: no more fetches
+    s.stop();
+  });
+
+  it('refetches /api/state at once on a config event', async () => {
+    const fetchFn = vi.fn().mockResolvedValueOnce(ok(mk('A', 0))).mockResolvedValue(ok(mk('B', 120)));
+    const s = new LiveStore({ EventSource: FakeES as unknown as LiveDeps['EventSource'], fetch: fetchFn as unknown as typeof fetch, now: () => localNow });
+    await s.start();
+    FakeES.instances[0].emit('config', {}, '10-2');
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(s.identity.name).toBe('B');
+    expect(s.rotationS).toBe(120);
+    s.stop();
+  });
+});

@@ -61,6 +61,9 @@ type Deps struct {
 
 	// loginSem caps concurrent password verifications (argon2id uses 64 MiB each).
 	loginSem chan struct{}
+
+	// sse caps concurrent event streams, in total and per client IP.
+	sse *sseCap
 }
 
 // LoginConcurrency is the number of password checks allowed at once.
@@ -96,6 +99,9 @@ func build(d Deps, extra func(*http.ServeMux, Deps)) http.Handler {
 	}
 	if d.exportSem == nil {
 		d.exportSem = make(chan struct{}, ExportConcurrency)
+	}
+	if d.sse == nil {
+		d.sse = newSSECap(SSEMaxTotal, SSEMaxPerIP)
 	}
 	mux := http.NewServeMux()
 	p := &public{d}

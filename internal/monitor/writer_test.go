@@ -306,3 +306,47 @@ func TestWriterDropsResultsBeforeReload(t *testing.T) {
 		t.Fatalf("stale result stored: %d", n)
 	}
 }
+
+// Review fix: a failed batch is retried by the next flush instead of being
+// thrown away, and the error clears once writing works again.
+func TestWriterRetriesFailedBatch(t *testing.T) {
+	f := newFixture(t, settings.Defaults())
+	d := f.devs[0]
+	f.feed(t, okRes(d, step(0)), okRes(d, step(1)))
+	f.st.DB.Exec(`CREATE TRIGGER boom BEFORE INSERT ON samples BEGIN SELECT RAISE(ABORT,'boom'); END`)
+	f.w.Submit(okRes(d, step(2)))
+	if err := f.w.Flush(context.Background()); err == nil {
+		t.Fatal("expected the batch to fail")
+	}
+	if _, _, e := f.w.Stats(); e == "" {
+		t.Fatal("error not reported")
+	}
+	f.st.DB.Exec(`DROP TRIGGER boom`)
+	f.feed(t, okRes(d, step(3)))
+	var n int
+	f.st.DB.QueryRow(`SELECT COUNT(*) FROM samples`).Scan(&n)
+	if n != 4 {
+		t.Fatalf("samples %d, want 4 (the failed batch must be retried)", n)
+	}
+	if _, drop, e := f.w.Stats(); e != "" || !drop.IsZero() {
+		t.Fatalf("stale error %q / drop %v after a successful flush", e, drop)
+	}
+}
+
+// A batch that keeps failing is given up after maxFlushAttempts, so it
+// cannot block later results forever.
+func TestWriterGivesUpPoisonBatch(t *testing.T) {
+	f := newFixture(t, settings.Defaults())
+	d := f.devs[0]
+	f.st.DB.Exec(`CREATE TRIGGER boom BEFORE INSERT ON samples BEGIN SELECT RAISE(ABORT,'boom'); END`)
+	f.w.Submit(okRes(d, step(0)))
+	for i := 0; i < maxFlushAttempts; i++ {
+		f.w.Flush(context.Background())
+	}
+	if len(f.w.retry) != 0 {
+		t.Fatalf("batch still retained after %d attempts", maxFlushAttempts)
+	}
+	if _, drop, _ := f.w.Stats(); drop.IsZero() {
+		t.Fatal("loss not reported")
+	}
+}

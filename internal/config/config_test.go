@@ -54,3 +54,25 @@ func TestConfigTLSFilesRequiresPaths(t *testing.T) {
 		t.Fatal("broken toml accepted")
 	}
 }
+
+// The template shipped in deploy/ must parse and, copied unchanged, keep the
+// defaults; its commented-out options must be valid once enabled.
+func TestDeployTemplate(t *testing.T) {
+	tpl, err := os.ReadFile(filepath.Join("..", "..", "deploy", "sismon.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "sismon.toml"), tpl, 0o600)
+	c, err := load(t, "--data", dir)
+	if err != nil || c.Listen != ":8501" || c.TLS != "" || len(c.TrustedProxies) != 0 {
+		t.Fatalf("%+v %v", c, err)
+	}
+	on := strings.NewReplacer("# tls = \"files\"", "tls = \"files\"", "# tls_cert", "tls_cert", "# tls_key", "tls_key",
+		"# trusted_proxy", "trusted_proxy").Replace(string(tpl))
+	os.WriteFile(filepath.Join(dir, "sismon.toml"), []byte(on), 0o600)
+	c, err = load(t, "--data", dir)
+	if err != nil || c.TLS != "files" || c.TLSCert != `C:\certs\sismon.crt` || c.TLSKey != `C:\certs\sismon.key` || len(c.TrustedProxies) != 1 {
+		t.Fatalf("%+v %v", c, err)
+	}
+}

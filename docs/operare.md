@@ -22,6 +22,8 @@ SisMon este un singur fișier executabil (`sismon.exe` pe Windows, `sismon` pe L
 
 Datele sunt păstrate implicit în `C:\ProgramData\SisMon`. Serviciul pornește automat la boot și este repornit la eroare. Pe Windows, ICMP nu necesită drepturi suplimentare.
 
+Directorul de date conține parola (hash), backup-urile și cheia TLS, așa că la instalare și la fiecare pornire SisMon îi restrânge drepturile la **SYSTEM**, **Administrators** și contul care rulează comanda (fără moștenirea „Users: citire” de la `C:\ProgramData`). Utilizatorii obișnuiți ai serverului nu îl mai pot citi.
+
 ### Linux (systemd)
 
 1. Creați contul de serviciu și instalați executabilul:
@@ -69,7 +71,7 @@ Parola are 12–200 caractere. Orice schimbare a parolei închide toate sesiunil
 | `--tls files --tls-cert C --tls-key K` | — | HTTPS cu certificatul propriu |
 | `--trusted-proxy IP/CIDR` | — | Reverse proxy de încredere (repetabil) |
 
-Aceleași opțiuni pot fi puse în `DIR/sismon.toml`. Opțiunile din linia de comandă au prioritate:
+Aceleași opțiuni pot fi puse în `DIR/sismon.toml`. Fișierul nu este creat de aplicație: un șablon comentat (`sismon.toml`, cu valorile implicite) vine alături de executabile în fiecare versiune și se află în depozit în `deploy/sismon.toml`; copiați-l în directorul de date și activați opțiunile dorite. Opțiunile din linia de comandă au prioritate:
 
 ```toml
 listen = ":8501"
@@ -79,7 +81,7 @@ tls = "auto"
 trusted_proxy = ["10.0.0.5"]
 ```
 
-`sismon install` salvează în serviciu opțiunile primite la instalare. Pentru a le schimba ulterior, editați `sismon.toml` și reporniți serviciul (`sismon stop`, apoi `sismon start`).
+`sismon install` salvează în serviciu doar directorul de date și opțiunile date **explicit** în comanda de instalare; acestea au prioritate și se schimbă numai prin reinstalare (`sismon uninstall`, apoi `sismon install …`). Toate celelalte se citesc din `sismon.toml` la fiecare pornire: editați fișierul și reporniți serviciul (`sismon stop`, apoi `sismon start`). Recomandat: instalați fără opțiuni și puneți-le în `sismon.toml`.
 
 Setările de monitorizare (interval, pachete, praguri, expirare, ora backup-ului, rotația și schema de culori ale Dispeceratului) se modifică din **Administrare → Setări monitorizare** și se aplică imediat.
 
@@ -139,7 +141,7 @@ La prima pornire după actualizare, migrațiile bazei rulează automat, după un
 
 ## 7. Jurnale și diagnostic
 
-- Jurnale: `DIR/logs/sismon.log` (JSON, rotit la 5 MB, 5 fișiere). Pe Linux, și în `journalctl -u SisMon`.
+- Jurnale: `DIR/logs/sismon.log` (JSON, rotit la 5 MB, 5 fișiere). Pe Linux, și în `journalctl -u SisMon`. Autentificările eșuate apar ca avertismente, cu IP-ul clientului.
 - **Administrare → Diagnostic:** modul ICMP, verificările întârziate, durata medie a unei verificări, erorile recente, dimensiunea bazei și ultimul backup.
 
 ## 8. Rețea și firewall
@@ -174,7 +176,7 @@ Toate datele au format JSON. Timpii sunt în milisecunde Unix, iar duratele în 
 
 Parametri pentru statistici: `from`, `to` (ms; implicit ultimele 24 h; maximum 400 de zile), `location`, `device`, `kind`, `incidents=all|active|closed`, `archived=0|1` (include locațiile și echipamentele arhivate; implicit nu), `degraded=0|1` (adaugă perioadele degradate la perioadele de indisponibilitate). Răspunsul conține pentru fiecare locație numărul de căderi (`outages`) și cronologia (`segments`, cel mult 600 de porțiuni), plus lista `outages` (cele mai recente 1000; totalul în `outages_total`; exporturile le conțin pe toate). Aceiași parametri se aplică exporturilor.
 
-Fluxul SSE (`/api/events`) trimite `snapshot`, `state`, `removed`, `health` și `ping` (la 15 s). Identificatorii au forma `epocă-număr`; după o repornire a serverului, clientul primește automat un `snapshot` nou. Reluarea se face cu antetul `Last-Event-ID` sau cu `?last=`.
+Fluxul SSE (`/api/events`) trimite `snapshot`, `state`, `removed`, `health`, `config` (setările sau identitatea s-au schimbat; clientul recitește `/api/state`) și `ping` (la 15 s). Sunt permise cel mult 500 de fluxuri simultane, 50 de la același IP (peste limită: 503 cu `Retry-After`). Identificatorii au forma `epocă-număr`; după o repornire a serverului, clientul primește automat un `snapshot` nou. Reluarea se face cu antetul `Last-Event-ID` sau cu `?last=`.
 
 ## 11. Ecranul de dispecerat
 

@@ -37,9 +37,19 @@ type Writer struct {
 	mu        sync.Mutex // guards devices, applies are serialized by it
 	devices   map[int64]*devInfo
 	lastFlush time.Time
-	dropped   int
-	lastErr   string
+	lastDrop  time.Time // last time results were lost (queue full or batch given up)
+	lastErr   string    // last write error; cleared by the next successful transaction
+	retry     []Result  // results of a failed batch, applied again by the next Flush
+	failures  int       // consecutive failed flushes of the retained results
 }
+
+const (
+	// maxRetained bounds the results kept for retry after failed flushes.
+	maxRetained = 20000
+	// maxFlushAttempts is how many times a batch is retried before it is
+	// given up (a result that always fails must not block all later ones).
+	maxFlushAttempts = 60
+)
 
 // NewWriter builds a writer.
 func NewWriter(st *store.Store, hub *live.Hub, set *settings.Holder) *Writer {
@@ -53,16 +63,17 @@ func (w *Writer) Submit(r Result) {
 	case w.ch <- r:
 	default:
 		w.mu.Lock()
-		w.dropped++
+		w.lastDrop = w.now()
 		w.mu.Unlock()
 	}
 }
 
-// Stats reports the last successful flush and the last error.
-func (w *Writer) Stats() (lastFlush time.Time, dropped int, lastErr string) {
+// Stats reports the last successful flush, the last time results were lost
+// and the current write error ("" once a transaction succeeds again).
+func (w *Writer) Stats() (lastFlush, lastDrop time.Time, lastErr string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	return w.lastFlush, w.dropped, w.lastErr
+	return w.lastFlush, w.lastDrop, w.lastErr
 }
 
 // Reload refreshes device configuration and persisted status.
@@ -155,6 +166,10 @@ func (w *Writer) Flush(ctx context.Context) error {
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if len(w.retry) > 0 {
+		batch = append(w.retry, batch...) // older results first
+		w.retry = nil
+	}
 	if len(batch) == 0 {
 		w.lastFlush = w.now()
 		return nil
@@ -174,10 +189,24 @@ func (w *Writer) Flush(ctx context.Context) error {
 	})
 	if err != nil {
 		// The batch rolled back: its working copies are discarded, memory
-		// still matches the database.
+		// still matches the database. The results are kept and retried by
+		// the next Flush (SQLITE_BUSY during a long delete, a full disk…).
 		w.lastErr = err.Error()
+		w.failures++
+		if w.failures >= maxFlushAttempts {
+			w.failures = 0
+			w.lastDrop = w.now()
+			return err
+		}
+		if len(batch) > maxRetained {
+			batch = batch[len(batch)-maxRetained:]
+			w.lastDrop = w.now()
+		}
+		w.retry = batch
 		return err
 	}
+	w.failures = 0
+	w.lastErr = ""
 	w.commit(tc)
 	w.lastFlush = w.now()
 	w.publish(ctx, tc)
@@ -376,6 +405,7 @@ func (w *Writer) ExpireGaps(ctx context.Context, now time.Time) error {
 		w.lastErr = err.Error()
 		return err
 	}
+	w.lastErr = ""
 	w.commit(tc)
 	w.publish(ctx, tc)
 	return nil
