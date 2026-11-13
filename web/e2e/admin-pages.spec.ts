@@ -58,7 +58,7 @@ test.describe('Administrare — pagini', () => {
     await login(page);
     await page.goto('/administrare/diagnostic');
     await expect(page.locator('.diag')).toContainText('Simulat');
-    await expect(page.locator('.diag')).toContainText('1.7.0');
+    await expect(page.locator('.diag')).toContainText('1.7.1');
   });
 
   test('despre', async ({ page }) => {

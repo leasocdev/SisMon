@@ -45,7 +45,7 @@ sismon.exe demo            # http://localhost:8502/, date simulate în .demo-dat
 ## Versiuni (release)
 
 ```bash
-go run ./tools/release --version 1.7.0     # dist/sismon-windows-amd64.exe, sismon-linux-amd64, sismon-linux-arm64, sismon.toml (șablon), SHA256SUMS
+go run ./tools/release --version 1.7.1     # dist/sismon-windows-amd64.exe, sismon-linux-amd64, sismon-linux-arm64, sismon.toml (șablon), SHA256SUMS
 go run ./tools/release --skip-web           # fără recompilarea interfeței
 ```
 
