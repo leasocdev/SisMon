@@ -34,6 +34,18 @@ type LocationView struct {
 	Incomplete bool         `json:"incomplete"`
 	Since      int64        `json:"since"`
 	Devices    []DeviceView `json:"devices"`
+	// DisabledDevices are configured but not monitored for now; they take no
+	// part in the location state.
+	DisabledDevices []DisabledDeviceView `json:"disabled_devices"`
+}
+
+// DisabledDeviceView is a temporarily disabled device of a location.
+type DisabledDeviceView struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Host  string `json:"host"`
+	Since int64  `json:"since"`
+	Until *int64 `json:"until"` // nil: until enabled by hand
 }
 
 // Health describes the monitor itself.

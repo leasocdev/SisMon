@@ -20,6 +20,10 @@ type Query struct {
 	DeviceID   *int64
 	Kind       string
 	Incidents  string // all | active | closed
+	// Archived includes archived locations and devices (parameter archived=1).
+	Archived bool
+	// Degraded adds the degraded periods to the location outages (degraded=1).
+	Degraded bool
 }
 
 func parseMs(v url.Values, key string) (*time.Time, error) {
@@ -76,6 +80,20 @@ func ParseQuery(v url.Values, now time.Time) (Query, error) {
 	}
 	if q.DeviceID, err = parseID(v, "device"); err != nil {
 		return q, err
+	}
+	switch v.Get("archived") {
+	case "", "0":
+	case "1":
+		q.Archived = true
+	default:
+		return q, apperr.Invalid("archived", "Parametrul archived acceptă: 0, 1.")
+	}
+	switch v.Get("degraded") {
+	case "", "0":
+	case "1":
+		q.Degraded = true
+	default:
+		return q, apperr.Invalid("degraded", "Parametrul degraded acceptă: 0, 1.")
 	}
 	switch q.Incidents {
 	case "":

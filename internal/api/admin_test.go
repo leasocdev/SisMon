@@ -212,6 +212,54 @@ func TestEditAndArchiveLocation(t *testing.T) {
 	}
 }
 
+func TestDeleteLocationPermanent(t *testing.T) {
+	s := newServer(t)
+	s.setPassword(t)
+	a := login(t, s)
+	id := strconv.FormatInt(s.loc, 10)
+	if c, _ := a.do("DELETE", "/api/admin/locations/"+id+"/permanent", nil, false); c != 403 {
+		t.Fatal("csrf", c)
+	}
+	if c, b := a.do("DELETE", "/api/admin/locations/"+id+"/permanent", nil, true); c != 200 {
+		t.Fatal(c, b)
+	}
+	if c, _ := a.do("DELETE", "/api/admin/locations/"+id+"/permanent", nil, true); c != 404 {
+		t.Fatal(c)
+	}
+	if c, _ := a.do("DELETE", "/api/admin/locations/abc/permanent", nil, true); c != 400 {
+		t.Fatal(c)
+	}
+	if _, b := a.do("GET", "/api/catalog", nil, false); strings.Contains(b, `"id":`+id+`,`) {
+		t.Fatal("deleted location still in catalog:", b)
+	}
+}
+
+func TestArchivedLocationsList(t *testing.T) {
+	s := newServer(t)
+	s.setPassword(t)
+	a := login(t, s)
+	if c, b := a.do("GET", "/api/admin/locations/archived", nil, false); c != 200 || !strings.Contains(b, `"locations":[]`) {
+		t.Fatal(c, b)
+	}
+	id := strconv.FormatInt(s.loc, 10)
+	if c, _ := a.do("DELETE", "/api/admin/locations/"+id, nil, true); c != 200 {
+		t.Fatal(c)
+	}
+	c, b := a.do("GET", "/api/admin/locations/archived", nil, false)
+	if c != 200 || !strings.Contains(b, `"id":`+id+`,`) || !strings.Contains(b, `"archived_at":`) || !strings.Contains(b, `"devices":`) {
+		t.Fatal(c, b)
+	}
+	if _, b := a.do("GET", "/api/admin/locations", nil, false); strings.Contains(b, `"id":`+id+`,`) {
+		t.Fatal("archived location in the active list:", b)
+	}
+	if c, _ := a.do("DELETE", "/api/admin/locations/"+id+"/permanent", nil, true); c != 200 {
+		t.Fatal(c)
+	}
+	if _, b := a.do("GET", "/api/admin/locations/archived", nil, false); !strings.Contains(b, `"locations":[]`) {
+		t.Fatal(b)
+	}
+}
+
 func TestDeviceTestEndpoint(t *testing.T) {
 	s := newServer(t)
 	s.setPassword(t)

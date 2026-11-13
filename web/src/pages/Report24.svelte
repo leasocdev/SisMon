@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import IncidentList from '../components/IncidentList.svelte';
-  import StatusBadge from '../components/StatusBadge.svelte';
   import { get } from '../lib/api';
   import { live } from '../lib/live.svelte';
   import { errorText } from '../lib/status';
@@ -67,14 +66,13 @@
       <table class="current">
         <thead>
           <tr>
-            <th scope="col">Stare</th><th scope="col">Locație</th><th scope="col">Echipament căzut</th>
+            <th scope="col">Locație</th><th scope="col">Echipament căzut</th>
             <th scope="col">Indisponibilă de la</th><th scope="col">Durată</th>
           </tr>
         </thead>
         <tbody>
           {#each report.current as c (c.location_id)}
             <tr>
-              <td><StatusBadge state="down" size="small" /></td>
               <td class="loc"><a href="/locatie/{c.location_id}">{c.location}</a></td>
               <td>
                 <ul class="devs">
@@ -156,8 +154,8 @@
     font-weight: 700;
   }
   @media print {
-    /* Insigna roșie și banda rămân vizibile chiar dacă browserul nu tipărește fundalurile. */
-    table.current :global(.badge) {
+    /* Banda roșie rămâne vizibilă chiar dacă browserul nu tipărește fundalurile. */
+    table.current tbody td:first-child {
       print-color-adjust: exact;
       -webkit-print-color-adjust: exact;
     }

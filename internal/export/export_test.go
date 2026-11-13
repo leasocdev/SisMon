@@ -91,7 +91,7 @@ func TestStatsXLSXSheets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(fx.GetSheetList(), ","); got != "Echipamente,Locații,Incidente,Perioadă și filtre" {
+	if got := strings.Join(fx.GetSheetList(), ","); got != "Echipamente,Locații,Indisponibilitate,Incidente,Perioadă și filtre" {
 		t.Fatal(got)
 	}
 	typ, _ := fx.GetCellType("Echipamente", "F2")

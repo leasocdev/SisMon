@@ -14,7 +14,8 @@ import (
 var (
 	deviceHeader = []string{"Locație", "Echipament", "Host", "Tip", "Primar", "Disponibilitate (%)", "Acoperire (%)",
 		"Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)", "Latență medie (ms)", "Pierderi (%)", "Incidente", "MTTR (min)"}
-	locationHeader = []string{"Locație", "Disponibilitate (%)", "Acoperire (%)", "Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)"}
+	locationHeader = []string{"Locație", "Disponibilitate (%)", "Acoperire (%)", "Funcțional (h)", "Degradat (h)", "Indisponibil (h)", "Fără date (h)", "Eroare monitor (h)", "Căderi"}
+	outageHeader   = []string{"Locație", "Stare", "Început", "Sfârșit", "Durată (min)", "Echipamente căzute"}
 	incidentHeader = []string{"Locație", "Echipament", "Început", "Sfârșit", "Durată (min)", "Stare"}
 	locationsCols  = []string{"Locație", "Adresă", "Latitudine", "Longitudine", "Echipament", "Host", "Tip", "Primar", "Observații"}
 )
@@ -63,7 +64,36 @@ func locationRow(l stats.LocationRow) []string {
 	if l.Archived {
 		name += " (arhivat)"
 	}
-	return append([]string{Safe(name), num(l.Availability), num(l.Coverage)}, durationCells(l.Durations)...)
+	row := append([]string{Safe(name), num(l.Availability), num(l.Coverage)}, durationCells(l.Durations)...)
+	return append(row, strconv.Itoa(l.Outages))
+}
+
+// outageState names the state of an outage period.
+func outageState(s string) string {
+	if s == "degraded" {
+		return "Degradată"
+	}
+	return "Indisponibilă"
+}
+
+// outageDevices lists the devices that were down, with their hosts.
+func outageDevices(o stats.OutageRow) string {
+	parts := make([]string, len(o.Devices))
+	for i, d := range o.Devices {
+		parts[i] = d.Name + " (" + d.Host + ")"
+	}
+	return strings.Join(parts, ", ")
+}
+
+func outageEnd(o stats.OutageRow, open string) string {
+	if o.End == nil {
+		return open
+	}
+	return fmtMs(*o.End)
+}
+
+func outageRow(o stats.OutageRow) []string {
+	return []string{Safe(o.Location), outageState(string(o.State)), fmtMs(o.Start), outageEnd(o, "în curs"), comma(o.DurationS / 60), Safe(outageDevices(o))}
 }
 
 func incidentRow(i stats.IncidentRow) []string {
@@ -88,6 +118,10 @@ func StatsCSV(w io.Writer, rep stats.Report, m Meta) error {
 	rows = append(rows, nil, []string{"Locații"}, locationHeader)
 	for _, l := range rep.Locations {
 		rows = append(rows, locationRow(l))
+	}
+	rows = append(rows, nil, []string{"Perioade de indisponibilitate"}, outageHeader)
+	for _, o := range rep.Outages {
+		rows = append(rows, outageRow(o))
 	}
 	rows = append(rows, nil, []string{"Incidente"}, incidentHeader)
 	for _, i := range rep.Incidents {

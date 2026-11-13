@@ -85,6 +85,7 @@ func TestReportPerformanceOneYear(t *testing.T) {
 	begin := time.Now()
 	r, err := Build(context.Background(), e.st, Query{From: T(start), To: T(now), Incidents: "all"}, T(now))
 	took := time.Since(begin)
+	t.Logf("report took %v", took)
 	if err != nil || len(r.Devices) != 60 {
 		t.Fatal(err)
 	}

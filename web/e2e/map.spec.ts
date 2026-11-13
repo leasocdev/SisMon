@@ -19,6 +19,33 @@ test.describe('Hartă', () => {
     await expect(page).toHaveURL(new RegExp(`/locatie/${id}$`));
   });
 
+  test('popup cu durata stării, cronologie 24 h și actualizare în timp real', async ({ page }) => {
+    const id = await locationId('Cahul');
+    await page.goto('/harta');
+    await page.locator('.nw-marker[data-id="' + id + '"]').click();
+    const popup = page.locator('.leaflet-popup');
+    await expect(popup.locator('.pstate')).toContainText('Funcțională');
+    await expect(popup.locator('.pstate')).toContainText(/Funcțională de \d+ (s|min) \(de la \d\d:\d\d\)/);
+    await expect(popup.locator('.mini-timeline')).toBeVisible();
+    // the open popup follows the live state, without reopening it
+    await setHost('10.0.1.1', 'timeout');
+    await expect(popup.locator('.pstate')).toContainText('Indisponibilă', { timeout: 20_000 });
+    await expect(popup).toContainText('Router (10.0.1.1)');
+  });
+
+  test('indiciu la trecerea mouse-ului peste marcaj', async ({ page }) => {
+    const id = await locationId('Cahul');
+    await page.goto('/harta');
+    await page.locator('.nw-marker[data-id="' + id + '"]').hover();
+    const hint = page.locator('.leaflet-tooltip.nw-hint');
+    await expect(hint).toBeVisible();
+    await expect(hint).toHaveText(/^Cahul · \S+ (Funcțională|Indisponibilă|Degradată|Fără date) · \d+ (s|min)/);
+    // the marker keeps an accessible name, without a second native tooltip
+    const marker = page.locator('.leaflet-marker-icon', { has: page.locator('.nw-marker[data-id="' + id + '"]') });
+    await expect(marker).toHaveAttribute('aria-label', 'Cahul');
+    await expect(marker).not.toHaveAttribute('title');
+  });
+
   test('popup cu nume HTML afișat literal', async ({ page }) => {
     const api = await adminApi();
     const name = '<img src=x onerror=window.__xss=1>Ștefan Vodă';
@@ -27,6 +54,9 @@ test.describe('Hartă', () => {
       await page.goto('/harta');
       await page.locator('.nw-marker[data-id="' + id + '"]').click();
       await expect(page.locator('.leaflet-popup')).toContainText(name);
+      // the hover hint shows the name as text too
+      await page.locator('.nw-marker[data-id="' + id + '"]').hover();
+      await expect(page.locator('.leaflet-tooltip.nw-hint')).toContainText(name);
       expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
     } finally {
       await api.send('DELETE', `/api/admin/locations/${id}`);

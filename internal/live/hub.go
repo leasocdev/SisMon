@@ -58,6 +58,7 @@ func (h *Hub) publish(typ string, data any) {
 func copyLoc(l *LocationView) LocationView {
 	c := *l
 	c.Devices = append([]DeviceView(nil), l.Devices...)
+	c.DisabledDevices = append([]DisabledDeviceView{}, l.DisabledDevices...)
 	return c
 }
 
@@ -228,9 +229,10 @@ func (h *Hub) Load(ctx context.Context, st *store.Store) error {
 	}
 	views := make([]LocationView, 0, len(locs))
 	for _, l := range locs {
-		v := LocationView{ID: l.ID, Name: l.Name, Address: l.Address, Notes: l.Notes, Lat: l.Lat, Lon: l.Lon, SortOrder: l.SortOrder, Devices: []DeviceView{}}
+		v := LocationView{ID: l.ID, Name: l.Name, Address: l.Address, Notes: l.Notes, Lat: l.Lat, Lon: l.Lon, SortOrder: l.SortOrder, Devices: []DeviceView{}, DisabledDevices: []DisabledDeviceView{}}
 		for _, d := range l.Devices {
-			if d.Disabled { // hidden from monitoring until enabled again
+			if d.Disabled { // not monitored until enabled again
+				v.DisabledDevices = append(v.DisabledDevices, DisabledDeviceView{ID: d.ID, Name: d.Name, Host: d.Host, Since: *d.DisabledAt, Until: d.DisabledUntil})
 				continue
 			}
 			v.Devices = append(v.Devices, DeviceViewFrom(d, stats[d.ID]))

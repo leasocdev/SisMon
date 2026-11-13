@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"sort"
 	"strconv"
 
 	"sismon/internal/apperr"
@@ -25,6 +26,31 @@ func (a *admin) listLocations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]any{"locations": locs})
+}
+
+// archivedLocation is a row of the admin list of archived locations.
+type archivedLocation struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	ArchivedAt int64  `json:"archived_at"`
+	Devices    int    `json:"devices"`
+}
+
+func (a *admin) listArchivedLocations(w http.ResponseWriter, r *http.Request) {
+	locs, err := a.d.Store.ListLocations(r.Context(), true)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	out := []archivedLocation{}
+	for _, l := range locs {
+		if l.ArchivedAt != nil {
+			out = append(out, archivedLocation{l.ID, l.Name, l.ArchivedAt.UnixMilli(), len(l.Devices)})
+		}
+	}
+	// most recently archived first
+	sort.SliceStable(out, func(i, j int) bool { return out[i].ArchivedAt > out[j].ArchivedAt })
+	writeJSON(w, 200, map[string]any{"locations": out})
 }
 
 func (a *admin) saveLocation(w http.ResponseWriter, r *http.Request, id *int64) {
@@ -63,6 +89,22 @@ func (a *admin) archiveLocation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := a.d.Store.ArchiveLocation(r.Context(), id, a.d.Now()); err != nil {
+		writeError(w, err)
+		return
+	}
+	if err := a.d.Monitor.Reload(r.Context()); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, 200, map[string]bool{"ok": true})
+}
+
+func (a *admin) deleteLocation(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	if _, err := a.d.Store.DeleteLocation(r.Context(), id, a.d.Now()); err != nil {
 		writeError(w, err)
 		return
 	}

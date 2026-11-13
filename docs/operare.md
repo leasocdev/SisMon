@@ -152,7 +152,7 @@ La prima pornire după actualizare, migrațiile bazei rulează automat, după un
 
 | Date | Păstrare |
 |---|---|
-| Stări (intervale), incidente, audit | nelimitat |
+| Stări (intervale), incidente, audit | nelimitat (cu excepția locațiilor șterse definitiv, vezi secțiunea 18) |
 | Măsurători brute (fiecare verificare) | 90 de zile |
 | Agregate orare de latență/pierderi | nelimitat |
 
@@ -167,11 +167,12 @@ Toate datele au format JSON. Timpii sunt în milisecunde Unix, iar duratele în 
 | `GET /api/state`, `/api/events` (SSE), `/api/catalog`, `/api/stats`, `/api/report24`, `/api/timelines`, `/api/locations/{id}/timeline`, `/api/devices/{id}/timeline`, `/api/devices/{id}/latency`, `/tiles/{z}/{x}/{y}.png` | public (LAN) |
 | `/api/admin/session`, `setup`, `login`, `logout` | autentificare |
 | `/api/admin/locations/order` | sesiune + `X-CSRF-Token` |
+| `GET /api/admin/locations/archived` (locațiile arhivate), `DELETE /api/admin/locations/{id}` (arhivare), `DELETE /api/admin/locations/{id}/permanent` (ștergere definitivă) | sesiune de administrator (+ `X-CSRF-Token` pentru modificări) |
 | `GET /api/export/csv`, `/api/export/xlsx`, `/api/export/pdf`, `GET /branding/logo` | public (LAN) |
 | `POST /api/admin/import/preview`, `/api/admin/import/apply` (multipart, câmpul `file`), `POST/DELETE /api/admin/identity/logo`, `GET /api/admin/export/locations.csv`, `locations.xlsx` | sesiune (+ `X-CSRF-Token` pentru modificări) |
 | `/api/admin/locations[/{id}]`, `devices/test`, `settings`, `identity`, `audit`, `diagnostic`, `backups[/{name}]`, `password` | sesiune de administrator + `X-CSRF-Token` pentru modificări |
 
-Parametri pentru statistici: `from`, `to` (ms; implicit ultimele 24 h; maximum 400 de zile), `location`, `device`, `kind`, `incidents=all|active|closed`.
+Parametri pentru statistici: `from`, `to` (ms; implicit ultimele 24 h; maximum 400 de zile), `location`, `device`, `kind`, `incidents=all|active|closed`, `archived=0|1` (include locațiile și echipamentele arhivate; implicit nu), `degraded=0|1` (adaugă perioadele degradate la perioadele de indisponibilitate). Răspunsul conține pentru fiecare locație numărul de căderi (`outages`) și cronologia (`segments`, cel mult 600 de porțiuni), plus lista `outages` (cele mai recente 1000; totalul în `outages_total`; exporturile le conțin pe toate). Aceiași parametri se aplică exporturilor.
 
 Fluxul SSE (`/api/events`) trimite `snapshot`, `state`, `removed`, `health` și `ping` (la 15 s). Identificatorii au forma `epocă-număr`; după o repornire a serverului, clientul primește automat un `snapshot` nou. Reluarea se face cu antetul `Last-Event-ID` sau cu `?last=`.
 
@@ -216,9 +217,10 @@ chrome --kiosk "http://SERVER:8501/dispecerat?rotatie=60"
 
 **Export statistici** (pagina Statistici → CSV / Excel / PDF): aceleași date ca pe ecran, pentru perioada și filtrele alese.
 
-- CSV: UTF-8 cu BOM, separator `;`, zecimale cu virgulă — se deschide corect în Excel cu setări românești. Blocuri: perioadă și filtre, echipamente, locații, incidente.
-- Excel: foile Echipamente, Locații, Incidente, Perioadă și filtre (numerele ca numere).
-- PDF: A4 orientat peisaj, cu logo, tabel echipamente, bare de stare pe locații și incidente; fontul DejaVu Sans este încorporat.
+- CSV: UTF-8 cu BOM, separator `;`, zecimale cu virgulă — se deschide corect în Excel cu setări românești. Blocuri: perioadă și filtre, echipamente, locații (cu numărul de căderi), perioade de indisponibilitate, incidente.
+- Excel: foile Echipamente, Locații, Indisponibilitate, Incidente, Perioadă și filtre (numerele ca numere).
+- PDF: A4 orientat peisaj, cu logo, tabel echipamente, cronologia fiecărei locații (cu disponibilitate, căderi și timp indisponibil), perioade de indisponibilitate și incidente (cel mult 2000 de rânduri fiecare; lista completă în CSV/Excel); fontul DejaVu Sans este încorporat.
+- Antetul arată și filtrele „Arhivate” și „Perioade degradate” (Incluse / Excluse).
 - Valorile care încep cu `=`, `+`, `-`, `@` primesc prefixul `'` în exporturile statistice, ca Excel să nu le execute ca formule.
 
 ## 13. Logo
@@ -275,8 +277,23 @@ Nu există serviciu. Opriți procesul (Ctrl+C) și ștergeți directorul de date
 Pentru lucrări planificate sau echipamente scoase temporar din funcțiune: Administrare → locația → bifa **Dezactivat** pe rândul echipamentului → Salvează.
 
 - Opțional, **Reactivare automată** (data și ora, ora Chișinăului; butoane rapide „+1 zi”, „+7 zile”). Fără dată, echipamentul rămâne dezactivat până debifați „Dezactivat”.
-- Un echipament dezactivat nu este verificat, nu influențează starea locației și nu apare pe Monitorizare, hartă, dispecerat sau în Raportul 24H. Dacă avea un incident deschis, acesta se încheie cu starea „Echipament dezactivat”.
+- Un echipament dezactivat nu este verificat, nu influențează starea locației și nu apare pe Monitorizare, hartă, dispecerat sau în Raportul 24H. Panoul de detalii al locației îl menționează separat, cu data reactivării automate. Dacă avea un incident deschis, acesta se încheie cu starea „Echipament dezactivat”.
 - Perioada dezactivată nu este socotită nici funcțională, nici indisponibilă: disponibilitatea nu scade, doar acoperirea.
 - La reactivare (manuală sau automată), echipamentul pornește din „Fără date” până la primele verificări. Reactivarea automată apare în jurnal ca „Echipament reactivat automat”.
 - Lista locațiilor din Administrare arată câte echipamente sunt dezactivate. Dacă dezactivați toate echipamentele primare ale unei locații, aceasta apare „Fără date”.
 - Exportul și importul de locații nu păstrează dezactivarea.
+
+## 18. Arhivarea și ștergerea definitivă a unei locații
+
+**Arhivarea** (Administrare → locația → **Arhivează**) oprește monitorizarea, dar păstrează locația și istoricul ei:
+
+- Locația dispare din Monitorizare, hartă, dispecerat, din lista de locații a Administrării și din exportul de locații; denumirea ei poate fi refolosită.
+- În Statistici (și în exporturile statistice) locațiile și echipamentele arhivate apar doar cu bifa **Include arhivate**, marcate „(arhivat)”. Un link către o locație arhivată activează bifa singur. Același lucru este valabil pentru echipamentele scoase dintr-o locație activă.
+- Raportul 24H include în continuare incidentele din ultimele 24 h ale locațiilor arhivate între timp.
+- Locațiile arhivate se văd în Administrare → Locații, în secțiunea pliabilă **Locații arhivate** (cu data arhivării și numărul de echipamente). O locație arhivată nu poate fi restaurată.
+
+**Ștergerea definitivă** elimină locația, toate echipamentele ei (inclusiv cele arhivate) și întregul istoric: măsurători, agregate, incidente, stări. Se face din editorul locației (**Șterge definitiv**) sau, pentru o locație arhivată, din secțiunea **Locații arhivate**.
+
+- Confirmarea cere tastarea exactă a denumirii locației.
+- Operația este ireversibilă; în jurnal rămâne doar intrarea „Locație ștearsă definitiv” (cu denumirea și echipamentele). Datele pot fi recuperate numai prin restaurarea unui backup anterior (secțiunea 5), care înlocuiește toată baza.
+- Pentru a păstra istoricul în statistici, folosiți arhivarea, nu ștergerea.

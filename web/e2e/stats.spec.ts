@@ -13,7 +13,17 @@ test.describe('Statistici', () => {
     await expect(row).toBeVisible();
     await expect(row.locator('td.incidents')).not.toHaveText('0');
     await expect(page.locator('.kpis')).toHaveCount(0);
-    await expect(page.locator('table.locs tbody tr', { hasText: 'Cahul' }).locator('td').nth(1)).toHaveText(/^\d{1,3},\d{2}%$/);
+    const loc = page.locator('table.locs tbody tr', { hasText: 'Cahul' });
+    await expect(loc.locator('td').nth(1)).toHaveText(/^\d{1,3},\d{2}%$/);
+    // when it was unavailable: duration, count, timeline and the period itself
+    await expect(loc.locator('td').nth(2)).not.toHaveText('—');
+    await expect(loc.locator('td').nth(3)).not.toHaveText('0');
+    await expect(loc.locator('.seg.f-down')).not.toHaveCount(0);
+    const outage = page.locator('table.outages tbody tr', { hasText: 'Cahul' }).first();
+    await expect(outage).toContainText('Indisponibilă');
+    await expect(outage.locator('td').nth(5)).not.toHaveText('—');
+    await page.getByLabel('Include perioadele degradate').check();
+    await expect(page).toHaveURL(/degraded=1/);
   });
 
   test('filtrele sunt păstrate în URL', async ({ page }) => {

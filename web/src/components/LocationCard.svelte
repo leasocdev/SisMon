@@ -1,5 +1,6 @@
 <script lang="ts">
   import { live } from '../lib/live.svelte';
+  import { fitMsg } from '../lib/fitmsg';
   import { cardDevices, errorText, fmtLatency, pendingText, severity, STATE_SYMBOL } from '../lib/status';
   import { timelines } from '../lib/timelines.svelte';
   import type { DeviceView, LocationView } from '../lib/types';
@@ -52,7 +53,15 @@
   <ul class="devices">
     {#each devs.shown as d (d.id)}
       {@const msg = message(d)}
-      <li class:primary={d.is_primary} class:bad={d.state !== 'up'} class="d-{d.state}">
+      <!-- the message shares the name's line: see fitMsg (the IP is covered only when needed; full text on hover) -->
+      <li
+        class:primary={d.is_primary}
+        class:bad={d.state !== 'up'}
+        class:has-msg={!!msg}
+        class="d-{d.state}"
+        title={msg ? `${d.name} (${d.host}): ${msg.text}` : undefined}
+        use:fitMsg={`${d.name}|${d.host}|${msg?.text ?? ''}|${d.latency_ms != null}|${size}|${compact}`}
+      >
         <span class="dev-sym t-{d.state}" aria-hidden="true">{STATE_SYMBOL[d.state]}</span>
         <span class="dname">
           {#if d.is_primary}<span class="star" title="Echipament primar">★</span><span class="sr-only">primar</span>{/if}
@@ -195,11 +204,45 @@
     text-align: right;
     white-space: nowrap;
   }
-  /* Mesajul de stare pe rândul al doilea, sub nume — nu mai împinge numele afară. */
+  /* Mesajul de stare stă pe rândul numelui, deasupra grilei (nu schimbă lățimea
+     coloanelor): între nume și IP când încape, altfel acoperă IP-ul și latența
+     în întregime. Poziția o calculează fitMsg; numele rămâne mereu întreg. */
+  .devices li.has-msg {
+    position: relative;
+  }
   .msg {
-    grid-column: 2 / -1;
+    position: absolute;
+    top: 50%;
+    right: 0;
+    transform: translateY(-50%);
     font-weight: 600;
     font-size: 0.92em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  /* Acoperite în întregime, nu pe jumătate: IP-ul și latența ies din grilă (rămân
+     citite de cititoarele de ecran), iar numele primește și spațiul lor. */
+  .devices li.cover .dname {
+    grid-column: 2 / -1;
+  }
+  .devices li.cover .host,
+  .devices li.cover .info {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* doar pe durata măsurării: lungimea numelui pe un singur rând */
+  .devices li.measure .dname {
+    white-space: nowrap;
+  }
+  /* rezervă: nici câteva caractere nu încap după nume */
+  .devices li.below .msg {
+    position: static;
+    grid-column: 2 / -1;
+    transform: none;
+    white-space: normal;
   }
   .pending {
     color: var(--c-degraded-text);

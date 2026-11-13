@@ -3,10 +3,12 @@ package stats
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,7 +138,7 @@ func TestReportDeviceCreatedAfterPeriod(t *testing.T) {
 	}
 	// archived before the period: no eligible time
 	e.exec(`UPDATE devices SET archived_at=? WHERE id=1`, 50*1000)
-	r = e.build(Query{From: T(60), To: T(100)}, 1000)
+	r = e.build(Query{From: T(60), To: T(100), Archived: true}, 1000)
 	if len(r.Devices) != 0 {
 		t.Fatalf("%+v", r)
 	}
@@ -200,6 +202,32 @@ func TestFilters(t *testing.T) {
 	}
 }
 
+func TestArchivedFilter(t *testing.T) {
+	e := newEnv(t)
+	e.device(1, 1, true, 0)
+	e.device(1, 2, false, 0) // removed from an active location
+	e.device(2, 3, true, 0)  // whole location archived
+	e.exec(`UPDATE devices SET archived_at=? WHERE id IN (2,3)`, 50*1000)
+	e.exec(`UPDATE locations SET archived_at=? WHERE id=2`, 50*1000)
+	ids := func(r Report) (devs, locs []int64) {
+		for _, d := range r.Devices {
+			devs = append(devs, d.ID)
+		}
+		for _, l := range r.Locations {
+			locs = append(locs, l.ID)
+		}
+		return
+	}
+	d, l := ids(e.build(Query{From: T(0), To: T(100)}, 100))
+	if fmt.Sprint(d, l) != "[1] [1]" {
+		t.Fatalf("excluded: devices %v locations %v", d, l)
+	}
+	d, l = ids(e.build(Query{From: T(0), To: T(100), Archived: true}, 100))
+	if fmt.Sprint(d, l) != "[1 2 3] [1 2]" {
+		t.Fatalf("included: devices %v locations %v", d, l)
+	}
+}
+
 func fieldOf(t *testing.T, err error) string {
 	t.Helper()
 	var e *apperr.Error
@@ -226,6 +254,8 @@ func TestParseQuery(t *testing.T) {
 		{url.Values{"from": {"NaN"}}, "from"},
 		{url.Values{"location": {"x"}}, "location"},
 		{url.Values{"incidents": {"maybe"}}, "incidents"},
+		{url.Values{"archived": {"yes"}}, "archived"},
+		{url.Values{"degraded": {"2"}}, "degraded"},
 	}
 	for _, c := range cases {
 		if _, err := ParseQuery(c.v, now); fieldOf(t, err) != c.want {
@@ -233,7 +263,10 @@ func TestParseQuery(t *testing.T) {
 		}
 	}
 	q, err = ParseQuery(url.Values{"from": {ms(now.Add(-time.Hour))}, "to": {ms(now.Add(time.Hour))}, "location": {"3"}}, now)
-	if err != nil || !q.To.Equal(now) || q.LocationID == nil || *q.LocationID != 3 {
+	if err != nil || !q.To.Equal(now) || q.LocationID == nil || *q.LocationID != 3 || q.Archived {
+		t.Fatalf("%+v %v", q, err)
+	}
+	if q, err = ParseQuery(url.Values{"archived": {"1"}}, now); err != nil || !q.Archived {
 		t.Fatalf("%+v %v", q, err)
 	}
 }
@@ -311,5 +344,92 @@ func TestTimelineForLocation(t *testing.T) {
 	}
 	if _, err := TimelineFor(context.Background(), e.st, store.EntityLocation, 99, T(100), T(400), T(1000)); err == nil {
 		t.Fatal("unknown location must fail")
+	}
+}
+
+func TestLocationOutages(t *testing.T) {
+	e := newEnv(t)
+	e.device(1, 1, true, 0)
+	e.device(1, 2, false, 0)
+	e.ivl("location", 1, state.Up, 0, 10)
+	e.ivl("location", 1, state.Down, 10, 20)
+	e.ivl("location", 1, state.Down, 20, 30) // adjacent: one period
+	e.ivl("location", 1, state.Unknown, 30, 32)
+	e.ivl("location", 1, state.Down, 32, 40) // after missing data: separate
+	e.ivl("location", 1, state.Degraded, 40, 50)
+	e.ivl("location", 1, state.Up, 50, 60)
+	e.ivl("location", 1, state.Down, 60, -1) // ongoing
+	e.ivl("device", 1, state.Down, 10, 30)
+	e.ivl("device", 1, state.Down, 32, 40)
+	e.ivl("device", 1, state.Down, 60, -1)
+	e.ivl("device", 2, state.Down, 40, 50)
+
+	r := e.build(Query{From: T(0), To: T(100)}, 100)
+	got := func(r Report) string {
+		var s []string
+		for _, o := range r.Outages {
+			end := "…"
+			if o.End != nil {
+				end = fmt.Sprint(*o.End / 1000)
+			}
+			var devs []int64
+			for _, d := range o.Devices {
+				devs = append(devs, d.ID)
+			}
+			s = append(s, fmt.Sprintf("%s %d-%s %gs %v", o.State, o.Start/1000, end, o.DurationS, devs))
+		}
+		return strings.Join(s, "; ")
+	}
+	if want := "down 60-… 40s [1]; down 32-40 8s [1]; down 10-30 20s [1]"; got(r) != want {
+		t.Fatalf("outages\n got %s\nwant %s", got(r), want)
+	}
+	if r.OutagesTotal != 3 || r.Locations[0].Outages != 3 {
+		t.Fatalf("total %d, location %d", r.OutagesTotal, r.Locations[0].Outages)
+	}
+	if d := r.Locations[0].Durations; d.Down != 68 || d.Degraded != 10 || d.Unknown != 2 {
+		t.Fatalf("durations %+v", d)
+	}
+	r = e.build(Query{From: T(0), To: T(100), Degraded: true}, 100)
+	if want := "down 60-… 40s [1]; degraded 40-50 10s [2]; down 32-40 8s [1]; down 10-30 20s [1]"; got(r) != want {
+		t.Fatalf("with degraded\n got %s\nwant %s", got(r), want)
+	}
+	if r.Locations[0].Outages != 3 {
+		t.Fatal("degraded periods must not count as outages")
+	}
+	// a period starting before the report keeps its real start
+	r = e.build(Query{From: T(15), To: T(35)}, 100)
+	if want := "down 32-40 8s [1]; down 10-30 20s [1]"; got(r) != want {
+		t.Fatalf("clipped period\n got %s\nwant %s", got(r), want)
+	}
+	segs := r.Locations[0].Segments
+	if len(segs) == 0 || segs[0].Start != 15000 || segs[len(segs)-1].End != 35000 {
+		t.Fatalf("segments %+v", segs)
+	}
+}
+
+func TestCompactKeepsShortOutages(t *testing.T) {
+	var segs []Segment
+	for i := int64(0); i < 10*MaxSegments; i++ {
+		segs = append(segs, Segment{i * 1000, (i + 1) * 1000, state.Up})
+	}
+	segs[4321].State = state.Down // one second in ~1.7 hours
+	out := compact(segs, 0, int64(len(segs))*1000)
+	if len(out) > MaxSegments {
+		t.Fatalf("%d segments", len(out))
+	}
+	down := 0
+	for _, s := range out {
+		if s.State == state.Down {
+			down++
+			if s.Start > 4321000 || s.End < 4322000 {
+				t.Fatalf("down slot %+v does not cover the outage", s)
+			}
+		}
+	}
+	if down != 1 {
+		t.Fatalf("%d down slots", down)
+	}
+	if short := compact(segs[:5], 0, 5000); len(short) != 5 {
+		t.Fatal("short timelines must stay unchanged")
 	}
 }

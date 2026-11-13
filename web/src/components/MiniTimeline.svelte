@@ -1,6 +1,6 @@
 <script lang="ts">
   import { STATE_LABEL } from '../lib/status';
-  import { fmtShort, fmtTime } from '../lib/time';
+  import { fmtDuration, fmtShort, fmtTime } from '../lib/time';
   import type { Segment } from '../lib/types';
 
   let { segments, from, to, label = 'Cronologie 24 h', tall = false }: { segments: Segment[]; from: number; to: number; label?: string; tall?: boolean } =
@@ -16,11 +16,17 @@
         return { ...s, left: ((a - from) / span) * 100, width: Math.max(((b - a) / span) * 100, 0.2), a, b };
       }),
   );
+
+  // '12.11 14:02–14:37 (35 min)'; the end date is repeated when it differs
+  function tip(state: Segment['state'], a: number, b: number): string {
+    const end = fmtShort(b).slice(0, 5) === fmtShort(a).slice(0, 5) ? fmtTime(b) : fmtShort(b);
+    return `${STATE_LABEL[state]} · ${fmtShort(a)}–${end} (${fmtDuration((b - a) / 1000)})`;
+  }
 </script>
 
 <div class="mini-timeline" class:tall role="img" aria-label={label}>
   {#each parts as p (p.start)}
-    <div class="seg f-{p.state}" style:left="{p.left}%" style:width="{p.width}%" title="{STATE_LABEL[p.state]} · {fmtShort(p.a)}–{fmtTime(p.b)}"></div>
+    <div class="seg f-{p.state}" style:left="{p.left}%" style:width="{p.width}%" title={tip(p.state, p.a, p.b)}></div>
   {/each}
 </div>
 

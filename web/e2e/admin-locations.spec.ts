@@ -103,6 +103,64 @@ test.describe('Administrare — locații', () => {
     await expect(page.locator('.loc-card', { hasText: 'Arhivă E2E' })).toHaveCount(0);
   });
 
+  test('ștergere definitivă', async ({ page }) => {
+    const api = await adminApi();
+    const id = await createLocation(api, { name: 'Ștergere E2E', devices: [{ name: 'R', host: '10.0.6.6' }] });
+    await api.dispose();
+    await login(page);
+    await page.goto(`/administrare/locatie/${id}`);
+    await page.getByRole('button', { name: 'Șterge definitiv' }).click();
+    const dlg = page.getByRole('alertdialog');
+    await expect(dlg).toContainText('ireversibilă');
+    const confirm = dlg.getByRole('button', { name: 'Șterge definitiv' });
+    await expect(confirm).toBeDisabled();
+    await dlg.getByRole('textbox').fill('Ștergere E2');
+    await expect(confirm).toBeDisabled();
+    await dlg.getByRole('textbox').fill('Ștergere E2E');
+    await confirm.click();
+    await expect(page).toHaveURL(/\/administrare$/);
+    await expect(page.locator('.loc-list')).not.toContainText('Ștergere E2E');
+    await page.goto(`/administrare/locatie/${id}`);
+    await expect(page.getByText('Locația nu există sau a fost arhivată.')).toBeVisible();
+  });
+
+  test('locații arhivate: Statistici și ștergere definitivă', async ({ page }) => {
+    const api = await adminApi();
+    const id = await createLocation(api, { name: 'Arhivată E2E', devices: [{ name: 'R', host: '10.0.6.7' }] });
+    await api.send('DELETE', `/api/admin/locations/${id}`);
+    await api.dispose();
+
+    // Statistici: hidden by default, shown with "Include arhivate"
+    await page.goto('/statistici');
+    const loc = page.getByLabel('Locație');
+    await expect(loc.locator('option', { hasText: 'Cahul' })).toHaveCount(1);
+    await expect(loc.locator('option', { hasText: 'Arhivată E2E' })).toHaveCount(0);
+    await page.getByLabel('Include arhivate').check();
+    await expect(page).toHaveURL(/archived=1/);
+    await expect(loc.locator('option', { hasText: 'Arhivată E2E (arhivat)' })).toHaveCount(1);
+    // a link to an archived location turns the switch on
+    await page.goto(`/statistici?location=${id}`);
+    await expect(page.getByLabel('Include arhivate')).toBeChecked();
+    await expect(loc).toHaveValue(String(id));
+    // switching it off drops the hidden selection
+    await page.getByLabel('Include arhivate').uncheck();
+    await expect(loc).toHaveValue('');
+    await expect(page).not.toHaveURL(/location=/);
+
+    // Administrare: archived section with permanent delete
+    await login(page);
+    const section = page.locator('details.archived');
+    await section.locator('summary').click();
+    const row = section.locator('li', { hasText: 'Arhivată E2E' });
+    await expect(row).toContainText('arhivată la');
+    await row.getByRole('button', { name: 'Șterge definitiv' }).click();
+    const dlg = page.getByRole('alertdialog');
+    await dlg.getByRole('textbox').fill('Arhivată E2E');
+    await dlg.getByRole('button', { name: 'Șterge definitiv' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'a fost ștearsă definitiv' })).toBeVisible();
+    await expect(page.locator('.arch-list li', { hasText: 'Arhivată E2E' })).toHaveCount(0);
+  });
+
   test('coordonate din hartă', async ({ page }) => {
     await login(page);
     await page.getByRole('link', { name: 'Adaugă locație' }).click();

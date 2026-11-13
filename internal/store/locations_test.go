@@ -129,6 +129,65 @@ func TestRemovedDeviceArchived(t *testing.T) {
 	}
 }
 
+func TestDeleteLocation(t *testing.T) {
+	s := openTemp(t)
+	ctx := context.Background()
+	keep := save(t, s, nil, input(t, "B", "10.0.0.9"), now)
+	r := save(t, s, nil, input(t, "A", "10.0.0.1", "10.0.0.2"), now)
+	// drop the second device so an archived one is removed as well
+	in := input(t, "A", "10.0.0.1")
+	in.Devices[0].ID = &r.Added[0]
+	save(t, s, &r.LocationID, in, now.Add(time.Second))
+	for _, d := range append(r.Added, keep.Added...) {
+		s.DB.Exec(`INSERT INTO samples(device_id,ts,ok,loss_pct) VALUES(?,?,1,0)`, d, Ms(now))
+		s.DB.Exec(`INSERT INTO samples_hourly(device_id,hour_ts,checks,ok_checks,loss_avg) VALUES(?,?,1,1,0)`, d, Ms(now))
+		s.DB.Exec(`INSERT INTO incidents(device_id,observed_at) VALUES(?,?)`, d, Ms(now))
+	}
+	removed, err := s.DeleteLocation(ctx, r.LocationID, now.Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 2 {
+		t.Fatalf("removed %v", removed)
+	}
+	all, _ := s.ListLocations(ctx, true)
+	if len(all) != 1 || all[0].ID != keep.LocationID {
+		t.Fatalf("locations after delete: %+v", all)
+	}
+	count := func(q string, args ...any) int {
+		var n int
+		if err := s.DB.QueryRow(q, args...).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	for _, tbl := range []string{"samples", "samples_hourly", "incidents", "device_status"} {
+		if n := count(`SELECT COUNT(*) FROM `+tbl+` WHERE device_id IN (?,?)`, r.Added[0], r.Added[1]); n != 0 {
+			t.Fatalf("%s: %d rows left", tbl, n)
+		}
+		if n := count(`SELECT COUNT(*) FROM `+tbl+` WHERE device_id=?`, keep.Added[0]); n == 0 {
+			t.Fatalf("%s: other location's rows removed", tbl)
+		}
+	}
+	if n := count(`SELECT COUNT(*) FROM state_intervals WHERE (entity='device' AND entity_id IN (?,?)) OR (entity='location' AND entity_id=?)`, r.Added[0], r.Added[1], r.LocationID); n != 0 {
+		t.Fatalf("state_intervals: %d rows left", n)
+	}
+	if n := count(`SELECT COUNT(*) FROM audit WHERE action='delete_location' AND entity_id=?`, r.LocationID); n != 1 {
+		t.Fatalf("audit rows %d", n)
+	}
+	var ae *apperr.Error
+	if _, err := s.DeleteLocation(ctx, r.LocationID, now); !errors.As(err, &ae) || ae.Status != 404 {
+		t.Fatalf("second delete: %v", err)
+	}
+	// archived locations can be deleted too
+	if _, err := s.ArchiveLocation(ctx, keep.LocationID, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DeleteLocation(ctx, keep.LocationID, now); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestArchiveLocation(t *testing.T) {
 	s := openTemp(t)
 	ctx := context.Background()

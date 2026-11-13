@@ -25,13 +25,14 @@ Deschideți `http://SERVER:8501/` în browser. Pagini:
 
 | Pagină | Rol |
 |---|---|
-| `/` Monitorizare | carduri pe locații (problemele primele; în modul „Compact” locațiile funcționale arată doar echipamentele primare), filtre pe stări, căutare, panou de detalii (`/locatie/{id}`) |
+| `/` Monitorizare | carduri pe locații (problemele primele; în modul „Compact” locațiile funcționale arată doar echipamentele primare; mesajul de stare stă pe rândul echipamentului, iar numele rămâne întreg), filtre pe stări, căutare |
+| `/locatie/{id}` | panou de detalii: starea și durata ei, rezumatul perioadei (disponibilitate, căderi, timp indisponibil), cronologii, echipamente (cu durata stării și cele dezactivate temporar), latență, perioade de indisponibilitate, incidente; legături spre Statistici și, pentru administrator, Editează |
 | `/dispecerat` | ecran mare, fără meniu; antet cu logo, denumire, subtitlu, oră și dată; rotația grilă/hartă și schema de culori se setează în Administrare; `?rotatie=60` și `?tema=luminoasa` le suprascriu |
-| `/harta` | hartă OpenStreetMap (prin proxy-ul serverului, cu cache); contururi locale când OSM nu răspunde |
-| `/statistici` | pe locații și echipamente: disponibilitate (locația e indisponibilă doar când cad echipamentele primare), acoperire, incidente, MTTR (timp mediu de remediere), pe orice perioadă de până la 400 de zile |
+| `/harta` | hartă OpenStreetMap (prin proxy-ul serverului, cu cache); contururi locale când OSM nu răspunde. La click pe o locație: starea și de când, echipamentele cu probleme, cronologia ultimelor 24 h, actualizate în timp real; la trecerea mouse-ului: nume, stare, durată |
+| `/statistici` | pe locații și echipamente: disponibilitate (locația e indisponibilă doar când cad echipamentele primare), timp indisponibil, număr de căderi, cronologia fiecărei locații, perioadele de indisponibilitate (cu echipamentele căzute; opțional și cele degradate), acoperire, incidente, MTTR (timp mediu de remediere), pe orice perioadă de până la 400 de zile; locațiile și echipamentele arhivate apar doar cu „Include arhivate” |
 | `/raport-24h` | locațiile indisponibile acum (cu echipamentele căzute și cauza), întreruperile echipamentelor primare din ultimele 24 h, plus incidentele minore (echipamente secundare), pregătit pentru tipărire A4 |
 | `/statistici` → CSV / Excel / PDF | exportul exact al datelor afișate |
-| `/administrare` | locații și echipamente (inclusiv dezactivarea temporară a unui echipament), import/export CSV și Excel, setări, identitate și logo, backup-uri, jurnal, diagnostic, parolă |
+| `/administrare` | locații și echipamente (inclusiv dezactivarea temporară a unui echipament, arhivarea și ștergerea definitivă a unei locații, lista locațiilor arhivate), import/export CSV și Excel, setări, identitate și logo, backup-uri, jurnal, diagnostic, parolă |
 
 ## Demonstrație
 
@@ -44,7 +45,7 @@ sismon.exe demo            # http://localhost:8502/, date simulate în .demo-dat
 ## Versiuni (release)
 
 ```bash
-go run ./tools/release --version 1.6.0     # dist/sismon-windows-amd64.exe, sismon-linux-amd64, sismon-linux-arm64, SHA256SUMS
+go run ./tools/release --version 1.7.0     # dist/sismon-windows-amd64.exe, sismon-linux-amd64, sismon-linux-arm64, SHA256SUMS
 go run ./tools/release --skip-web           # fără recompilarea interfeței
 ```
 

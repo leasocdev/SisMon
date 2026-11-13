@@ -189,8 +189,8 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 	}
 	p.table(devCols, rows, "Nu există echipamente în perioada selectată.")
 
-	// location state bars
-	p.heading("Locații — stări în perioadă")
+	// location timelines: each state where it happened in the period
+	p.heading("Locații — cronologie în perioadă")
 	f.SetFont("dejavu", "", 7.5)
 	legendX := margin
 	for _, k := range []string{"up", "degraded", "down", "unknown", "error"} {
@@ -216,30 +216,49 @@ func StatsPDF(w io.Writer, rep stats.Report, m Meta) error {
 			name += " (arhivat)"
 		}
 		f.CellFormat(70, rowH, p.fit(name, 70), "", 0, "L", false, 0, "")
-		d := l.Durations
-		total := d.Up + d.Degraded + d.Down + d.Unknown + d.Error
-		bx := barX
-		if total > 0 {
-			for _, k := range []struct {
-				state string
-				v     float64
-			}{{"up", d.Up}, {"degraded", d.Degraded}, {"down", d.Down}, {"error", d.Error}, {"unknown", d.Unknown}} {
-				if k.v <= 0 {
+		f.SetDrawColor(150, 150, 150)
+		f.Rect(barX, yy+1, barW, rowH-2, "D")
+		f.SetDrawColor(0, 0, 0)
+		if span := float64(rep.To - rep.From); span > 0 {
+			for _, s := range l.Segments {
+				a := barX + barW*float64(max(s.Start, rep.From)-rep.From)/span
+				b := barX + barW*float64(min(s.End, rep.To)-rep.From)/span
+				if b <= a {
 					continue
 				}
-				wd := barW * k.v / total
-				c := stateColor[k.state]
+				if s.State == "down" || s.State == "degraded" {
+					b = max(b, a+0.4) // short outages stay visible
+				}
+				c := stateColor[string(s.State)]
 				f.SetFillColor(c.r, c.g, c.b)
-				f.Rect(bx, yy+1, wd, rowH-2, "F")
-				bx += wd
+				f.Rect(a, yy+1, b-a, rowH-2, "F")
 			}
-		} else {
-			f.SetDrawColor(150, 150, 150)
-			f.Rect(barX, yy+1, barW, rowH-2, "D")
-			f.SetDrawColor(0, 0, 0)
 		}
 		f.SetXY(barX+barW+3, yy)
-		f.CellFormat(0, rowH, "Disponibilitate "+pct(l.Availability), "", 1, "L", false, 0, "")
+		f.CellFormat(0, rowH, p.fit(fmt.Sprintf("%s · %d căderi · %s", pct(l.Availability), l.Outages, dur(l.Durations.Down)), pageW-margin-barX-barW-3), "", 1, "L", false, 0, "")
+	}
+	if len(rep.Locations) > 0 {
+		f.SetFont("dejavu", "", 7)
+		f.SetX(barX)
+		f.CellFormat(barW/2, 4, fmtMs(rep.From), "", 0, "L", false, 0, "")
+		f.CellFormat(barW/2, 4, fmtMs(rep.To), "", 1, "R", false, 0, "")
+	}
+
+	// outage periods
+	p.heading("Perioade de indisponibilitate")
+	outCols := []col{{"Locație", 62, "L"}, {"Stare", 24, "L"}, {"Început", 30, "L"}, {"Sfârșit", 30, "L"}, {"Durată", 25, "R"}, {"Echipamente căzute", 106, "L"}}
+	rows = rows[:0]
+	shown := rep.Outages
+	if len(shown) > MaxPDFIncidents {
+		shown = shown[:MaxPDFIncidents]
+	}
+	for _, o := range shown {
+		rows = append(rows, []string{o.Location, outageState(string(o.State)), fmtMs(o.Start), outageEnd(o, "în curs"), dur(o.DurationS), outageDevices(o)})
+	}
+	p.table(outCols, rows, "Nicio perioadă de indisponibilitate în perioada selectată.")
+	if n := len(rep.Outages) - len(shown); n > 0 {
+		f.SetFont("dejavu", "", 8)
+		f.CellFormat(0, 6, fmt.Sprintf("… și încă %d perioade mai vechi — lista completă se află în exportul CSV sau Excel.", n), "", 1, "L", false, 0, "")
 	}
 
 	// incidents

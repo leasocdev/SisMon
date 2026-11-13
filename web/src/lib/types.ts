@@ -31,6 +31,8 @@ export interface LocationView {
   incomplete: boolean;
   since: number;
   devices: DeviceView[];
+  /** Temporarily disabled devices: not monitored, not part of the state. */
+  disabled_devices?: { id: number; name: string; host: string; since: number; until: number | null }[];
 }
 
 export interface Health {
@@ -118,6 +120,22 @@ export interface LocationRow {
   durations: Durations;
   availability: number | null;
   coverage: number | null;
+  /** Unavailable periods overlapping the report period. */
+  outages: number;
+  /** State timeline within the report period. */
+  segments: Segment[];
+}
+
+export interface OutageRow {
+  location_id: number;
+  location: string;
+  state: 'down' | 'degraded';
+  /** Real limits, also when outside the report period; end null = ongoing. */
+  start: number;
+  end: number | null;
+  duration_s: number;
+  /** Devices that were down: the primary ones (down) or secondary ones (degraded). */
+  devices: { id: number; name: string; host: string; is_primary: boolean }[];
 }
 
 export interface IncidentRow {
@@ -139,6 +157,9 @@ export interface Report {
   devices: DeviceRow[];
   locations: LocationRow[];
   incidents: IncidentRow[];
+  /** Newest first; may be truncated for display (see outages_total). */
+  outages: OutageRow[];
+  outages_total: number;
 }
 
 export interface Report24 {
@@ -155,6 +176,13 @@ export interface Report24 {
   }[];
   incidents: IncidentRow[];
   minor_incidents: IncidentRow[];
+}
+
+export interface ArchivedLocation {
+  id: number;
+  name: string;
+  archived_at: number;
+  devices: number;
 }
 
 export interface CatalogLocation {

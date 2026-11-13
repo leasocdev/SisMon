@@ -92,7 +92,7 @@ func perMinute(v *float64) *float64 {
 	return &m
 }
 
-// StatsXLSX writes the four sheets required by the spec.
+// StatsXLSX writes the statistics sheets.
 func StatsXLSX(w io.Writer, rep stats.Report, m Meta) error {
 	f := excelize.NewFile()
 	defer f.Close()
@@ -125,10 +125,23 @@ func StatsXLSX(w io.Writer, rep stats.Report, m Meta) error {
 		if l.Archived {
 			name += " (arhivat)"
 		}
-		if err := loc.put(append([]any{Safe(name), l.Availability, l.Coverage}, durations(l.Durations)...)...); err != nil {
+		cells := append([]any{Safe(name), l.Availability, l.Coverage}, durations(l.Durations)...)
+		if err := loc.put(append(cells, float64(l.Outages))...); err != nil {
 			return err
 		}
 	}
+
+	out, err := newSheet(f, "Indisponibilitate", false)
+	if err != nil {
+		return err
+	}
+	out.header(outageHeader)
+	for _, o := range rep.Outages {
+		if err := out.put(Safe(o.Location), outageState(string(o.State)), fmtMs(o.Start), outageEnd(o, "în curs"), o.DurationS/60, Safe(outageDevices(o))); err != nil {
+			return err
+		}
+	}
+	out.f.SetColWidth(out.name, "F", "F", 48)
 
 	inc, err := newSheet(f, "Incidente", false)
 	if err != nil {

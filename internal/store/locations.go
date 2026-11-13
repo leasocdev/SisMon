@@ -540,3 +540,57 @@ func (s *Store) SetLocationOrder(ctx context.Context, ids []int64, now time.Time
 	}
 	return tx.Commit()
 }
+
+// DeleteLocation permanently removes a location (active or archived), all its
+// devices (archived ones included) and their whole history: samples, hourly
+// aggregates, incidents, statuses and state intervals. It cannot be undone;
+// only the audit entry remains. It returns the ids of the removed devices.
+func (s *Store) DeleteLocation(ctx context.Context, id int64, now time.Time) ([]int64, error) {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	var removed []int64
+	var name string
+	if err := tx.QueryRowContext(ctx, `SELECT name FROM locations WHERE id=?`, id).Scan(&name); errors.Is(err, sql.ErrNoRows) {
+		return nil, apperr.NotFound("Locația nu există.")
+	} else if err != nil {
+		return nil, wrap("delete location", err)
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM devices WHERE location_id=?`, id)
+	if err != nil {
+		return nil, wrap("delete location", err)
+	}
+	for rows.Next() {
+		var did int64
+		if err := rows.Scan(&did); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		removed = append(removed, did)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	const devs = `(SELECT id FROM devices WHERE location_id=?)`
+	for _, q := range []string{
+		`DELETE FROM samples WHERE device_id IN ` + devs,
+		`DELETE FROM samples_hourly WHERE device_id IN ` + devs,
+		`DELETE FROM incidents WHERE device_id IN ` + devs,
+		`DELETE FROM device_status WHERE device_id IN ` + devs,
+		`DELETE FROM state_intervals WHERE entity='device' AND entity_id IN ` + devs,
+		`DELETE FROM state_intervals WHERE entity='location' AND entity_id=?`,
+		`DELETE FROM devices WHERE location_id=?`,
+		`DELETE FROM locations WHERE id=?`,
+	} {
+		if _, err := tx.ExecContext(ctx, q, id); err != nil {
+			return nil, wrap("delete location", err)
+		}
+	}
+	if err := s.Audit(ctx, tx, "delete_location", "location", id, map[string]any{"name": name, "devices": removed}, now); err != nil {
+		return nil, err
+	}
+	return removed, tx.Commit()
+}

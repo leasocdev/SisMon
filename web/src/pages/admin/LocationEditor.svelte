@@ -146,6 +146,25 @@
     }
   }
 
+  async function purge() {
+    const name = baseline.name;
+    const ok = await confirmDialog(
+      `Ștergeți definitiv locația „${name}”? Se șterg și toate echipamentele ei, împreună cu întregul istoric (măsurători, incidente, statistici). Operația este ireversibilă; dacă doriți păstrarea istoricului, folosiți „Arhivează”.`,
+      'Șterge definitiv',
+      'Renunță',
+      true,
+      name,
+    );
+    if (!ok) return;
+    try {
+      await send('DELETE', `/api/admin/locations/${id}/permanent`);
+      baseline = $state.snapshot(current()) as LocationInput;
+      navigate('/administrare', { force: true });
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  }
+
   function move(from: number, to: number) {
     rows = moveDevice(rows, from, to);
     rowErrors = {};
@@ -263,7 +282,10 @@
       {:else}
         <a class="btn" href="/administrare/locatie/nou">Adaugă locație</a>
       {/if}
-      {#if !isNew}<button type="button" class="danger" onclick={archive}>Arhivează</button>{/if}
+      {#if !isNew}
+        <button type="button" class="danger" onclick={archive}>Arhivează</button>
+        <button type="button" class="danger" onclick={purge}>Șterge definitiv</button>
+      {/if}
     </div>
   </form>
 {/if}

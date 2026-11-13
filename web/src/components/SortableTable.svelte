@@ -52,11 +52,15 @@
     <thead>
       <tr>
         {#each columns as c (c.key)}
-          <th scope="col" aria-sort={sortKey === c.key ? dir : 'none'} class:num={c.numeric}>
-            <button type="button" class="sort" onclick={() => sortBy(c.key)}>
-              {c.label}<span aria-hidden="true">{sortKey === c.key ? (dir === 'ascending' ? ' ▲' : ' ▼') : ''}</span>
-            </button>
-          </th>
+          {#if c.sortable === false}
+            <th scope="col" class:num={c.numeric} title={c.title}>{c.label}</th>
+          {:else}
+            <th scope="col" aria-sort={sortKey === c.key ? dir : 'none'} class:num={c.numeric} title={c.title}>
+              <button type="button" class="sort" onclick={() => sortBy(c.key)}>
+                {c.label}<span aria-hidden="true">{sortKey === c.key ? (dir === 'ascending' ? ' ▲' : ' ▼') : ''}</span>
+              </button>
+            </th>
+          {/if}
         {/each}
       </tr>
     </thead>

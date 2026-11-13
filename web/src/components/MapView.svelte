@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { mount, onMount, unmount } from 'svelte';
   import type * as Leaflet from 'leaflet';
   import contours from '../assets/contours.json';
   import { loadLeaflet } from '../lib/leaflet';
   import { live } from '../lib/live.svelte';
-  import { severity, STATE_LABEL, STATE_SYMBOL, stateText } from '../lib/status';
+  import { severity, STATE_SYMBOL, stateText } from '../lib/status';
+  import { fmtDuration } from '../lib/time';
+  import MapPopup from './MapPopup.svelte';
   import { retryDelay, TILE_RETRIES, TileHealth } from '../lib/tilehealth';
   import type { LocationView, State } from '../lib/types';
 
@@ -41,25 +43,39 @@
     return L.divIcon({ html: s, className: 'nw-icon', iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -12] });
   }
 
+  // Popup content: a live Svelte component, mounted while the popup is open.
+  const popups = new Map<number, { box: HTMLElement; comp: ReturnType<typeof mount> }>();
+
   function popup(id: number): HTMLElement {
-    const l = live.location(id);
-    const box = el('div', 'nw-popup');
-    if (!l) {
-      box.append(el('p', '', 'Locația nu mai există.'));
-      return box;
-    }
-    box.append(el('strong', 'pname', l.name));
-    box.append(el('div', `pstate t-${l.state}`, stateText(l.state)));
-    const bad = l.devices.filter((d) => d.state !== 'up');
-    if (bad.length) {
-      const ul = el('ul');
-      for (const d of bad) ul.append(el('li', '', `${d.name} (${d.host}): ${STATE_LABEL[d.state]}`));
-      box.append(ul);
-    }
-    const a = el('a', '', 'Detalii');
-    a.href = `/locatie/${l.id}`;
-    box.append(a);
+    const open = popups.get(id);
+    if (open) return open.box; // Leaflet may ask again while it is open
+    const box = el('div');
+    const comp = mount(MapPopup, { target: box, props: { id, onresize: () => markers.get(id)?.m.getPopup()?.update() } });
+    popups.set(id, { box, comp });
     return box;
+  }
+
+  function closePopup(id: number) {
+    const open = popups.get(id);
+    if (!open) return;
+    popups.delete(id);
+    unmount(open.comp);
+  }
+
+  /** Hover hint: 'Cahul · ✕ Indisponibilă · 35 min'. An element, never a
+   * string: Leaflet would insert a string as HTML (location names are text). */
+  function hint(id: number): HTMLElement {
+    const l = live.location(id);
+    if (!l) return el('span');
+    const parts = [l.name, stateText(l.state)];
+    if (l.since) parts.push(fmtDuration((live.serverNow() - l.since) / 1000));
+    return el('span', '', parts.join(' · '));
+  }
+
+  // Divs have no alt text: name the marker for screen readers (its title
+  // would show a second, native tooltip next to the hover hint).
+  function nameMarker(m: Leaflet.Marker, name: string) {
+    m.getElement()?.setAttribute('aria-label', name);
   }
 
   function clusterIcon(c: Leaflet.MarkerCluster): Leaflet.DivIcon {
@@ -144,8 +160,12 @@
       const cur = markers.get(l.id);
       const pos = L.latLng(l.lat!, l.lon!);
       if (!cur) {
-        const m = L.marker(pos, { icon: icon(l), title: l.name, keyboard: true, nwState: l.state } as Leaflet.MarkerOptions);
+        const m = L.marker(pos, { icon: icon(l), keyboard: true, nwState: l.state } as Leaflet.MarkerOptions);
         m.bindPopup(() => popup(l.id));
+        m.bindTooltip(() => hint(l.id), { direction: 'top', offset: [0, -14], className: 'nw-hint' });
+        m.on('popupopen', () => m.closeTooltip());
+        m.on('popupclose', () => closePopup(l.id));
+        m.on('add', () => nameMarker(m, markers.get(l.id)?.name ?? l.name));
         cluster.addLayer(m);
         markers.set(l.id, { m, state: l.state, name: l.name });
         continue;
@@ -156,11 +176,12 @@
         cur.m.setIcon(icon(l));
         cur.state = l.state;
         cur.name = l.name;
-        if (cur.m.isPopupOpen()) cur.m.setPopupContent(popup(l.id));
+        nameMarker(cur.m, l.name);
       }
     }
     for (const [id, cur] of markers) {
       if (!seen.has(id)) {
+        closePopup(id);
         cluster.removeLayer(cur.m);
         markers.delete(id);
       }
@@ -308,6 +329,7 @@
       ro.disconnect();
       if (timer) clearInterval(timer);
       cancelRetries();
+      for (const id of [...popups.keys()]) closePopup(id);
       map?.stop();
       map?.off();
       map?.remove();
@@ -446,12 +468,14 @@
   :global(.nw-tools a:not(.leaflet-disabled):hover) {
     background: var(--surface-2);
   }
-  :global(.nw-popup ul) {
-    margin: 4px 0;
-    padding-left: 18px;
+  :global(.leaflet-tooltip.nw-hint) {
+    background: var(--surface);
+    color: var(--fg);
+    border-color: var(--border);
+    font-weight: 600;
   }
-  :global(.nw-popup .pname) {
-    font-size: 1.05em;
+  :global(.leaflet-tooltip-top.nw-hint::before) {
+    border-top-color: var(--border);
   }
   :global(.leaflet-popup-content-wrapper),
   :global(.leaflet-popup-tip) {

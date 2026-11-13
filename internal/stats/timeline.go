@@ -41,12 +41,52 @@ func TimelineFor(ctx context.Context, st *store.Store, e store.Entity, id int64,
 	if b > n {
 		b = n
 	}
-	rows, err := st.DB.QueryContext(ctx, `SELECT state, MAX(start_at,?1), MIN(COALESCE(end_at,?3),?2) FROM state_intervals
+	return segments(ctx, st.DB, e, id, a, b, n)
+}
+
+// interval is a stored state interval; End is nil while it is open.
+type interval struct {
+	State state.State
+	Start int64
+	End   *int64
+}
+
+// intervals returns an entity's stored intervals overlapping [a, b] (ms),
+// unclipped and in order; open intervals count as ending at n.
+func intervals(ctx context.Context, q store.Querier, e store.Entity, id, a, b, n int64) ([]interval, error) {
+	rows, err := q.QueryContext(ctx, `SELECT state, start_at, end_at FROM state_intervals
 		WHERE entity=?5 AND entity_id=?4 AND start_at < ?2 AND COALESCE(end_at,?3) > ?1 ORDER BY start_at, id`, a, b, n, id, e)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	var out []interval
+	for rows.Next() {
+		var iv interval
+		var end sql.NullInt64
+		if err := rows.Scan(&iv.State, &iv.Start, &end); err != nil {
+			return nil, err
+		}
+		if end.Valid {
+			iv.End = &end.Int64
+		}
+		out = append(out, iv)
+	}
+	return out, rows.Err()
+}
+
+// segments returns the state segments of an entity in [a, b] (ms), gaps as
+// unknown; open intervals end at n.
+func segments(ctx context.Context, q store.Querier, e store.Entity, id, a, b, n int64) ([]Segment, error) {
+	ivs, err := intervals(ctx, q, e, id, a, b, n)
+	if err != nil {
+		return nil, err
+	}
+	return toSegments(ivs, a, b, n), nil
+}
+
+// toSegments clips intervals to [a, b] and fills the gaps as unknown.
+func toSegments(ivs []interval, a, b, n int64) []Segment {
 	out := []Segment{}
 	add := func(s, e int64, stt state.State) {
 		if e <= s {
@@ -59,18 +99,18 @@ func TimelineFor(ctx context.Context, st *store.Store, e store.Entity, id int64,
 		out = append(out, Segment{s, e, stt})
 	}
 	cursor := a
-	for rows.Next() {
-		var stt string
-		var s, e int64
-		if err := rows.Scan(&stt, &s, &e); err != nil {
-			return nil, err
+	for _, iv := range ivs {
+		s, e := max(iv.Start, a), n
+		if iv.End != nil {
+			e = *iv.End
 		}
+		e = min(e, b)
 		add(cursor, s, state.Unknown)
-		add(max(s, cursor), e, state.State(stt))
+		add(max(s, cursor), e, iv.State)
 		cursor = max(cursor, e)
 	}
 	add(cursor, b, state.Unknown)
-	return out, rows.Err()
+	return out
 }
 
 // Report24 is the operational 24-hour report.
@@ -103,7 +143,8 @@ type CurrentDevice struct {
 
 // BuildReport24 builds the last-24-hours report from a live snapshot.
 func BuildReport24(ctx context.Context, st *store.Store, snap live.Snapshot, now time.Time) (Report24, error) {
-	q := Query{From: now.Add(-24 * time.Hour), To: now, Incidents: "all"}
+	// The last day's incidents stay in the report even if archived since.
+	q := Query{From: now.Add(-24 * time.Hour), To: now, Incidents: "all", Archived: true}
 	rep, err := Build(ctx, st, q, now)
 	if err != nil {
 		return Report24{}, err

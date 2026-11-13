@@ -95,3 +95,39 @@ test.describe('Monitorizare', () => {
     await expect(page.locator('.loc-card', { hasText: 'Cahul' }).locator('.mini-timeline .seg').first()).toBeAttached();
   });
 });
+
+test('mesajul de stare stă pe rândul numelui, fără să-l acopere', async ({ page }) => {
+  const api = await adminApi();
+  const id = await createLocation(api, { name: 'Mesaj E2E', devices: [{ name: 'Router principal de bază', host: '10.0.9.9' }] });
+  await setHost('10.0.9.9', 'timeout');
+  try {
+    // Row geometry: the name on one line and whole, the message on the same
+    // line after it, the IP either clear of the message or hidden entirely.
+    const check = () =>
+      page.locator(`.loc-card[data-id="${id}"] li.has-msg`).evaluate((li) => {
+        const r = document.createRange();
+        r.selectNodeContents(li.querySelector('.dname')!);
+        const name = r.getBoundingClientRect();
+        const lines = r.getClientRects();
+        const msg = li.querySelector('.msg')!.getBoundingClientRect();
+        const host = li.querySelector('.host')!.getBoundingClientRect();
+        const hostHidden = getComputedStyle(li.querySelector('.host')!).opacity === '0';
+        return {
+          mode: ['between', 'cover', 'below'].find((m) => li.classList.contains(m)),
+          nameOneLine: [...lines].every((l) => Math.abs(l.top - lines[0].top) < 2),
+          sameLine: Math.abs((msg.top + msg.bottom) / 2 - (name.top + name.bottom) / 2) < 3,
+          clearOfName: msg.left >= name.right - 0.5,
+          ipOk: hostHidden || msg.right <= host.left + 0.5,
+        };
+      });
+    for (const width of [1400, 380]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/');
+      await expect(page.locator(`.loc-card[data-id="${id}"] .msg`)).toBeVisible({ timeout: 20_000 });
+      await expect.poll(check).toMatchObject({ mode: 'cover', nameOneLine: true, sameLine: true, clearOfName: true, ipOk: true });
+    }
+  } finally {
+    await api.send('DELETE', `/api/admin/locations/${id}`);
+    await api.dispose();
+  }
+});

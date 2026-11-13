@@ -2,16 +2,19 @@
   import { onMount } from 'svelte';
   import StatusBadge from '../../components/StatusBadge.svelte';
   import { get, send } from '../../lib/api';
+  import { confirmDialog } from '../../lib/confirm.svelte';
   import { moveDevice } from '../../lib/editor';
   import { live } from '../../lib/live.svelte';
   import { fold } from '../../lib/status';
-  import type { AdminLocation } from '../../lib/types';
+  import { fmtDateTime } from '../../lib/time';
+  import type { AdminLocation, ArchivedLocation } from '../../lib/types';
 
   let locations = $state<AdminLocation[]>([]);
   let query = $state('');
   let error = $state('');
   let saved = $state('');
   let loaded = $state(false);
+  let archived = $state<ArchivedLocation[]>([]);
   let dragFrom: number | null = null;
 
   const filtering = $derived(query.trim() !== '');
@@ -22,6 +25,33 @@
       return fold(l.name).includes(q) || l.devices.some((d) => fold(d.name).includes(q) || d.host.toLowerCase().includes(q));
     }),
   );
+
+  async function loadArchived() {
+    try {
+      archived = (await get<{ locations: ArchivedLocation[] }>('/api/admin/locations/archived')).locations;
+    } catch (e) {
+      error = (e as Error).message;
+    }
+  }
+
+  async function purge(l: ArchivedLocation) {
+    const ok = await confirmDialog(
+      `Ștergeți definitiv locația arhivată „${l.name}”? Se șterg și echipamentele ei, împreună cu întregul istoric (măsurători, incidente, statistici). Operația este ireversibilă.`,
+      'Șterge definitiv',
+      'Renunță',
+      true,
+      l.name,
+    );
+    if (!ok) return;
+    try {
+      await send('DELETE', `/api/admin/locations/${l.id}/permanent`);
+      saved = `Locația „${l.name}” a fost ștearsă definitiv.`;
+      error = '';
+    } catch (e) {
+      error = (e as Error).message;
+    }
+    await loadArchived();
+  }
 
   async function load() {
     try {
@@ -53,7 +83,10 @@
     }
   }
 
-  onMount(load);
+  onMount(() => {
+    load();
+    loadArchived();
+  });
 </script>
 
 <div class="head">
@@ -90,7 +123,40 @@
   {/each}
 </ul>
 
+{#if archived.length > 0}
+  <details class="archived">
+    <summary>Locații arhivate ({archived.length})</summary>
+    <p class="muted">Nu se monitorizează. Istoricul lor apare în Statistici doar cu opțiunea „Include arhivate”.</p>
+    <ul class="arch-list">
+      {#each archived as l (l.id)}
+        <li class="card">
+          <span class="name">{l.name}</span>
+          <span class="muted">{l.devices} {l.devices === 1 ? 'echipament' : 'echipamente'}</span>
+          <span class="muted">arhivată la {fmtDateTime(l.archived_at)}</span>
+          <span class="spacer"></span>
+          <button type="button" class="danger" onclick={() => purge(l)} aria-label="Șterge definitiv {l.name}">Șterge definitiv</button>
+        </li>
+      {/each}
+    </ul>
+  </details>
+{/if}
+
 <style>
+  .archived {
+    margin-top: 24px;
+  }
+  .archived summary {
+    cursor: pointer;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .archived .name {
+    font-weight: 600;
+  }
+  .danger {
+    border-color: var(--c-down);
+    color: var(--c-down);
+  }
   .off-tag {
     border: 1px dashed var(--muted);
     border-radius: 3px;
@@ -118,7 +184,8 @@
     max-width: 100%;
     margin-bottom: 10px;
   }
-  .loc-list {
+  .loc-list,
+  .arch-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -126,7 +193,8 @@
     flex-direction: column;
     gap: 6px;
   }
-  .loc-list li {
+  .loc-list li,
+  .arch-list li {
     display: flex;
     align-items: center;
     gap: 10px;

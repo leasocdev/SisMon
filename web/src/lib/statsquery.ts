@@ -12,6 +12,10 @@ export interface StatsFilter {
   device?: number;
   kind?: string;
   incidents: IncidentsFilter;
+  /** Include archived locations and devices. */
+  archived?: true;
+  /** Add the degraded periods to the outage list. */
+  degraded?: true;
 }
 
 function posInt(v: string | undefined): number | undefined {
@@ -32,6 +36,8 @@ export function filterFromQuery(q: Record<string, string>, _now: number): StatsF
   if (device) f.device = device;
   if (q.kind?.trim()) f.kind = q.kind.trim();
   if (q.incidents === 'active' || q.incidents === 'closed') f.incidents = q.incidents;
+  if (q.archived === '1') f.archived = true;
+  if (q.degraded === '1') f.degraded = true;
   return f;
 }
 
@@ -45,6 +51,8 @@ export function filterToQuery(f: StatsFilter): Record<string, string> {
   if (f.device) q.device = String(f.device);
   if (f.kind) q.kind = f.kind;
   if (f.incidents !== 'all') q.incidents = f.incidents;
+  if (f.archived) q.archived = '1';
+  if (f.degraded) q.degraded = '1';
   return q;
 }
 
@@ -60,5 +68,7 @@ export function apiParams(f: StatsFilter, now: number): Record<string, string> {
   if (f.device) p.device = String(f.device);
   if (f.kind) p.kind = f.kind;
   p.incidents = f.incidents;
+  if (f.archived) p.archived = '1';
+  if (f.degraded) p.degraded = '1';
   return p;
 }

@@ -18,6 +18,7 @@ const AUDIT: Record<string, string> = {
   backup: 'Backup manual',
   save_location: 'Locație salvată',
   archive_location: 'Locație arhivată',
+  delete_location: 'Locație ștearsă definitiv',
   locations_order: 'Ordinea locațiilor modificată',
   setup_password: 'Parolă inițială setată',
   change_password: 'Parolă schimbată',

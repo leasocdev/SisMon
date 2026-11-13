@@ -65,7 +65,7 @@
 </script>
 
 <div class="coord-map">
-  <div class="m" bind:this={host} aria-label="Hartă pentru alegerea coordonatelor: faceți click pe poziția locației"></div>
+  <div class="m" bind:this={host} role="region" aria-label="Hartă pentru alegerea coordonatelor: faceți click pe poziția locației"></div>
   <p class="muted hint">Faceți click pe hartă pentru a seta coordonatele; marcajul se poate trage.</p>
 </div>
 

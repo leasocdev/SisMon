@@ -57,7 +57,9 @@ func (p *public) exportMeta(r *http.Request, q stats.Query) (export.Meta, error)
 		kind = "Toate"
 	}
 	inc := map[string]string{"all": "Toate", "active": "În curs", "closed": "Încheiate"}[q.Incidents]
-	m.Filters = []export.Filter{{Label: "Locație", Value: locName}, {Label: "Echipament", Value: devName}, {Label: "Tip", Value: kind}, {Label: "Incidente", Value: inc}}
+	m.Filters = []export.Filter{{Label: "Locație", Value: locName}, {Label: "Echipament", Value: devName}, {Label: "Tip", Value: kind}, {Label: "Incidente", Value: inc},
+		{Label: "Arhivate", Value: map[bool]string{true: "Incluse", false: "Excluse"}[q.Archived]},
+		{Label: "Perioade degradate", Value: map[bool]string{true: "Incluse", false: "Excluse"}[q.Degraded]}}
 	if p.d.Logo != nil {
 		m.Logo = p.d.Logo()
 	}

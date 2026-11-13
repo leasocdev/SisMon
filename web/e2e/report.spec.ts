@@ -10,7 +10,9 @@ test.describe('Raport 24H', () => {
     await setHost('10.0.1.1', 'timeout');
     const row = page.locator('table.current tbody tr', { hasText: 'Cahul' });
     await expect(row).toBeVisible({ timeout: 25_000 });
-    await expect(row).toContainText('✕ Indisponibilă');
+    // the section title already says it: no state column
+    await expect(page.locator('table.current thead')).not.toContainText('Stare');
+    await expect(row.locator('.badge')).toHaveCount(0);
     await expect(row).toContainText('Fără răspuns'); // cauza căderii
     await expect(page.locator('h2.current-h')).toHaveText('✕ Locații indisponibile acum (1)');
     await expect(page.locator('.summary')).toContainText('Indisponibile acum: 1');

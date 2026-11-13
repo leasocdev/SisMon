@@ -79,8 +79,15 @@ func (p *public) stats(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	// The page shows the most recent periods; the exports have all of them.
+	if len(rep.Outages) > MaxOutagesShown {
+		rep.Outages = rep.Outages[:MaxOutagesShown]
+	}
 	writeJSON(w, 200, rep)
 }
+
+// MaxOutagesShown bounds the outage list sent to the statistics page.
+const MaxOutagesShown = 1000
 
 func (p *public) deviceID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
