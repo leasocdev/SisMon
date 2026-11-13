@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"sismon/internal/apperr"
 	"sismon/internal/export"
@@ -75,27 +76,38 @@ func (p *public) exportStats(w http.ResponseWriter, r *http.Request) {
 	}
 	select {
 	case p.d.exportSem <- struct{}{}:
-		defer func() { <-p.d.exportSem }()
 	default:
 		w.Header().Set("Retry-After", "5")
 		writeError(w, &apperr.Error{Status: http.StatusServiceUnavailable, Message: "Un export este deja în curs; reîncercați peste câteva secunde."})
 		return
 	}
 	now := p.d.Now()
-	q, err := stats.ParseQuery(r.URL.Query(), now)
+	// The slot covers building only: a client that reads slowly must not hold it.
+	buf, err := func() (*bytes.Buffer, error) {
+		defer func() { <-p.d.exportSem }()
+		return p.buildExport(r, format, now)
+	}()
 	if err != nil {
 		writeError(w, err)
 		return
+	}
+	name := fmt.Sprintf("sismon-statistici-%s.%s", now.In(export.Zone).Format("20060102-1504"), format)
+	attachment(w, format, name, buf.Bytes())
+}
+
+// buildExport renders the statistics export for the request in memory.
+func (p *public) buildExport(r *http.Request, format string, now time.Time) (*bytes.Buffer, error) {
+	q, err := stats.ParseQuery(r.URL.Query(), now)
+	if err != nil {
+		return nil, err
 	}
 	rep, err := stats.Build(r.Context(), p.d.Store, q, now)
 	if err != nil {
-		writeError(w, err)
-		return
+		return nil, err
 	}
 	m, err := p.exportMeta(r, q)
 	if err != nil {
-		writeError(w, err)
-		return
+		return nil, err
 	}
 	var buf bytes.Buffer
 	switch format {
@@ -106,12 +118,7 @@ func (p *public) exportStats(w http.ResponseWriter, r *http.Request) {
 	case "pdf":
 		err = export.StatsPDF(&buf, rep, m)
 	}
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	name := fmt.Sprintf("sismon-statistici-%s.%s", now.In(export.Zone).Format("20060102-1504"), format)
-	attachment(w, format, name, buf.Bytes())
+	return &buf, err
 }
 
 // exportLocations serves the active locations in the import format.

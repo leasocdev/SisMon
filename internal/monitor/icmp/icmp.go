@@ -134,13 +134,23 @@ func classifyStatus(st uint32) Code {
 		return OK
 	case 11010: // IP_REQ_TIMED_OUT
 		return Timeout
-	case 11002, 1231: // IP_DEST_NET_UNREACHABLE, ERROR_NETWORK_UNREACHABLE
+	case 11032: // IP_NEGOTIATING_IPSEC: no answer yet, like a timeout
+		return Timeout
+	// IP_DEST_NET_UNREACHABLE, IP_BAD_ROUTE, IP_BAD_DESTINATION, ERROR_NETWORK_UNREACHABLE.
+	// IP_GENERAL_FAILURE is what Windows reports when the route or VPN tunnel
+	// to the target is gone: an outage of the path, not of the monitor.
+	case 11002, 11012, 11018, 11050, 1231:
 		return NetUnreachable
-	case 11003, 11004, 11005, 11013, 11040, 1232: // host/prot/port unreachable, TTL expired, IPv6 dest unreachable, ERROR_HOST_UNREACHABLE
+	// host/protocol/port unreachable, packet too big, TTL expired (transit and
+	// reassembly), parameter problem, source quench, IPv6 dest unreachable,
+	// ERROR_HOST_UNREACHABLE
+	case 11003, 11004, 11005, 11009, 11013, 11014, 11015, 11016, 11040, 1232:
 		return HostUnreachable
 	case 5: // ERROR_ACCESS_DENIED
 		return Permission
 	}
+	// IP_BUF_TOO_SMALL, IP_NO_RESOURCES, IP_BAD_OPTION, IP_HW_ERROR, IP_BAD_REQ,
+	// IP_OPTION_TOO_BIG and unknown codes are local faults of the monitor.
 	return Internal
 }
 

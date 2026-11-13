@@ -183,3 +183,28 @@ func TestTestHostRejectsInvalid(t *testing.T) {
 		t.Fatal(r, err)
 	}
 }
+
+// Review fix: Reload completes even when the HTTP request that triggered it
+// is gone (its change is already committed), and concurrent reloads end with
+// the newest configuration.
+func TestReloadIgnoresCallerCancellation(t *testing.T) {
+	f := newFixture(t, settings.Defaults())
+	svc := NewService(f.st, f.set, live.NewHub(), &icmp.Fake{Fn: func(netip.Addr) icmp.Result { return icmp.Result{Sent: 1, Received: 1} }}, noLookup)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := svc.Reload(ctx); err != nil {
+		t.Fatalf("reload with a cancelled request context: %v", err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() { defer wg.Done(); svc.Reload(context.Background()) }()
+	}
+	wg.Wait()
+	svc.s.mu.Lock()
+	n := len(svc.s.entries)
+	svc.s.mu.Unlock()
+	if n != len(f.devs) {
+		t.Fatalf("targets %d, want %d", n, len(f.devs))
+	}
+}

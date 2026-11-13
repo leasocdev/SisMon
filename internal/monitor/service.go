@@ -15,6 +15,9 @@ import (
 	"sismon/internal/store"
 )
 
+// dropWindow is how long lost results stay reported in Health.
+const dropWindow = 10 * time.Minute
+
 // Workers is the maximum number of concurrent checks.
 const Workers = 64
 
@@ -37,7 +40,13 @@ type Service struct {
 	mu    sync.Mutex
 	bLast *int64
 	bErr  string
+
+	reloadMu     sync.Mutex // serializes Reload: the last one to run reads the newest configuration
+	reloadFailed bool       // guarded by mu; retried by Run
 }
+
+// reloadTimeout bounds one Reload, which no longer follows the caller's context.
+const reloadTimeout = 30 * time.Second
 
 // NewService builds the monitoring service.
 func NewService(st *store.Store, set *settings.Holder, hub *live.Hub, p icmp.Pinger, lookup LookupFunc, opts ...ServiceOptions) *Service {
@@ -79,7 +88,24 @@ func (m *Service) targets(ctx context.Context) ([]Target, error) {
 }
 
 // Reload applies configuration changes: writer state, targets, live view.
+// It runs to completion even if the caller's context (an HTTP request whose
+// change is already committed) is cancelled; a failure is retried by Run.
 func (m *Service) Reload(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reloadTimeout)
+	defer cancel()
+	m.reloadMu.Lock()
+	defer m.reloadMu.Unlock()
+	err := m.reload(ctx)
+	m.mu.Lock()
+	m.reloadFailed = err != nil
+	m.mu.Unlock()
+	if err != nil {
+		slog.Error("reîncărcarea configurației", "err", err)
+	}
+	return err
+}
+
+func (m *Service) reload(ctx context.Context) error {
 	if err := m.w.Reload(ctx); err != nil {
 		return err
 	}
@@ -130,6 +156,12 @@ func (m *Service) Run(ctx context.Context) error {
 		case <-tick.C:
 			m.hub.SetHealth(m.Health())
 			m.enableExpired(ctx)
+			m.mu.Lock()
+			retry := m.reloadFailed
+			m.mu.Unlock()
+			if retry {
+				m.Reload(ctx)
+			}
 		}
 	}
 }
@@ -145,7 +177,7 @@ func (m *Service) SetBackupStatus(last *int64, errMsg string) {
 // Health reports the monitor's own condition.
 func (m *Service) Health() live.Health {
 	ss := m.s.Stats()
-	lastFlush, dropped, lastErr := m.w.Stats()
+	lastFlush, lastDrop, lastErr := m.w.Stats()
 	h := live.Health{LateChecks: ss.LateChecks, AvgCheckMs: float64(ss.AvgCheck.Microseconds()) / 1000, ICMPMode: m.p.Mode(), Errors: []string{}}
 	if !ss.LastCycle.IsZero() {
 		v := ss.LastCycle.UnixMilli()
@@ -154,8 +186,8 @@ func (m *Service) Health() live.Health {
 	if lastErr != "" {
 		h.Errors = append(h.Errors, lastErr)
 	}
-	if dropped > 0 {
-		h.Errors = append(h.Errors, "Rezultate pierdute din cauza cozii pline.")
+	if !lastDrop.IsZero() && time.Since(lastDrop) < dropWindow {
+		h.Errors = append(h.Errors, "Rezultate pierdute (coadă plină sau scriere eșuată repetat).")
 	}
 	if fi, err := os.Stat(m.st.Path); err == nil {
 		h.DBSizeBytes = fi.Size()

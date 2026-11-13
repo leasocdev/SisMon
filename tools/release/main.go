@@ -117,6 +117,15 @@ func release(o options) error {
 		}
 		names = append(names, name)
 	}
+	// Startup options template, to be copied into the data directory.
+	tpl, err := os.ReadFile(filepath.Join(o.root, "deploy", "sismon.toml"))
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(out, "sismon.toml"), tpl, 0o644); err != nil {
+		return err
+	}
+	names = append(names, "sismon.toml")
 	if err := writeChecksums(out, names); err != nil {
 		return err
 	}

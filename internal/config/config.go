@@ -21,6 +21,10 @@ type Config struct {
 	TLSKey         string
 	TrustedProxies []string
 	Demo           bool
+	// Explicit names the flags given on the command line (not from sismon.toml
+	// or defaults). `install` stores only these in the service, so the other
+	// options keep coming from sismon.toml at every start.
+	Explicit map[string]bool
 }
 
 type fileConfig struct {
@@ -51,6 +55,7 @@ func Load(fs *flag.FlagSet, args []string) (Config, error) {
 	}
 	set := map[string]bool{}
 	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	c.Explicit = set
 	abs, err := filepath.Abs(c.DataDir)
 	if err != nil {
 		return c, err

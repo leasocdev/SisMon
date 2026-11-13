@@ -131,6 +131,14 @@ func (h *Hub) SetHealth(hl Health) {
 	h.publish("health", hl)
 }
 
+// ConfigChanged tells the clients that settings or identity changed (event
+// "config"), so open pages such as the dispatcher refetch /api/state.
+func (h *Hub) ConfigChanged() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.publish("config", struct{}{})
+}
+
 // Epoch identifies this hub instance (ms at creation); SSE ids are "epoch-seq".
 func (h *Hub) Epoch() int64 { return h.epoch }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"strings"
 	"testing"
 	"time"
@@ -225,5 +226,52 @@ func TestSSEResumeBeyondReplayLimitSendsSnapshot(t *testing.T) {
 	}
 	if m := openSSE(t, srv.URL, sseID(s.d.Hub, first)).next(t); m.event != "snapshot" {
 		t.Fatalf("a resume that cannot be replayed fully must get a snapshot: %+v", m)
+	}
+}
+
+// Review fix: event streams are capped per client IP and in total.
+func TestEventsConnectionCap(t *testing.T) {
+	s := newServer(t)
+	s.d.sse = newSSECap(3, 2)
+	s.h = build(s.d, nil)
+	ip := netip.MustParseAddr("192.0.2.10")
+	s.d.sse.acquire(ip)
+	s.d.sse.acquire(ip) // this client already holds 2 streams
+	if w := s.do("GET", "/api/events", nil, nil); w.Code != 503 || w.Header().Get("Retry-After") == "" {
+		t.Fatal("per-IP cap:", w.Code, w.Body.String())
+	}
+	s.d.sse.acquire(netip.MustParseAddr("192.0.2.11")) // total 3
+	if w := s.doFrom("192.0.2.12:5000", "GET", "/api/events", nil, nil); w.Code != 503 {
+		t.Fatal("total cap:", w.Code)
+	}
+	s.d.sse.release(ip)
+	if !s.d.sse.acquire(ip) {
+		t.Fatal("slot not released")
+	}
+}
+
+// Review fix: open pages (the dispatcher) learn about settings and identity
+// changes through a "config" event and refetch /api/state.
+func TestConfigChangePublishesEvent(t *testing.T) {
+	s := newServer(t)
+	s.setPassword(t)
+	a := login(t, s)
+	last := s.d.Hub.Snapshot().Seq
+	if c, b := a.do("PUT", "/api/admin/identity", map[string]any{"name": "Rețea Nord", "subtitle": "", "report_title": "Raport"}, true); c != 200 {
+		t.Fatal(c, b)
+	}
+	set := map[string]any{"interval_s": 60, "packets": 3, "timeout_s": 2, "failures": 3, "recoveries": 2, "stale_s": 300, "incidents_for": "all", "prefer_ipv4": true, "backup_hour": 3, "backup_secondary_dir": ""}
+	if c, b := a.do("PUT", "/api/admin/settings", set, true); c != 200 {
+		t.Fatal(c, b)
+	}
+	evs, _ := s.d.Hub.Since(last)
+	n := 0
+	for _, e := range evs {
+		if e.Type == "config" {
+			n++
+		}
+	}
+	if n != 2 {
+		t.Fatalf("config events %d, want 2: %+v", n, evs)
 	}
 }

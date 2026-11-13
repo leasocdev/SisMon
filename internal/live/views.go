@@ -62,7 +62,8 @@ type Health struct {
 }
 
 // Event is one change published to subscribers.
-// Type: "state" (LocationView), "removed" (location id), "health" (Health).
+// Type: "state" (LocationView), "removed" (location id), "health" (Health),
+// "config" (empty: settings or identity changed, refetch /api/state).
 type Event struct {
 	Seq  uint64 `json:"seq"`
 	Type string `json:"type"`

@@ -19,6 +19,7 @@ import (
 	"sismon/internal/auth"
 	"sismon/internal/branding"
 	"sismon/internal/config"
+	"sismon/internal/fsown"
 	"sismon/internal/jobs"
 	"sismon/internal/live"
 	"sismon/internal/lockfile"
@@ -52,13 +53,25 @@ func defaultLookup(ctx context.Context, host string) ([]netip.Addr, error) {
 	return net.DefaultResolver.LookupNetIP(ctx, "ip", host)
 }
 
-// OpenStore opens the database, backing it up before any migration.
+// OpenStore opens the database, backing it up before any migration. On
+// Windows it first restricts the data directory to SYSTEM, Administrators and
+// the current account (it holds the password hash, backups and the TLS key).
 func OpenStore(ctx context.Context, dataDir string) (*store.Store, error) {
+	if err := fsown.Protect(dataDir); err != nil {
+		slog.Warn("drepturile directorului de date nu au putut fi restrânse", "dir", dataDir, "err", err)
+	}
 	return store.Open(ctx, filepath.Join(dataDir, "sismon.db"), store.Options{BeforeMigrate: func(s *store.Store, from, to int) error {
 		_, err := jobs.NewBackupService(s, dataDir, settings.NewHolder(settings.Defaults())).Create(ctx, "pre-migrate")
 		return err
 	}})
 }
+
+// HTTP server timeouts: a request body (up to 5 MB for imports) must arrive
+// within ReadTimeout, and a response must be written within WriteTimeout.
+const (
+	ReadTimeout  = 60 * time.Second
+	WriteTimeout = 120 * time.Second
+)
 
 // Run starts every component and blocks until ctx is cancelled.
 func Run(ctx context.Context, cfg config.Config, opt Options) error {
@@ -119,7 +132,10 @@ func Run(ctx context.Context, cfg config.Config, opt Options) error {
 	if opt.Wrap != nil {
 		handler = opt.Wrap(handler)
 	}
-	srv := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 120 * time.Second,
+	// ReadTimeout and WriteTimeout stop slow clients from holding connections
+	// forever; the event stream and backup downloads set their own deadlines.
+	srv := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: ReadTimeout,
+		WriteTimeout: WriteTimeout, IdleTimeout: 120 * time.Second,
 		ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelWarn)}
 
 	ln, err := net.Listen("tcp", cfg.Listen)

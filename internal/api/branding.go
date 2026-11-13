@@ -39,6 +39,9 @@ func (a *admin) setLogoVersion(w http.ResponseWriter, r *http.Request, v int64, 
 		err = a.d.Store.SetMeta(r.Context(), "identity", id)
 	}
 	if err == nil {
+		a.d.Hub.ConfigChanged()
+	}
+	if err == nil {
 		err = a.d.Store.Audit(r.Context(), a.d.Store.DB, action, "identity", 0, map[string]int64{"logo_version": v}, a.d.Now())
 	}
 	if err != nil {

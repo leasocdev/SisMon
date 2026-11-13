@@ -1,0 +1,33 @@
+# SisMon — opțiunile de pornire
+#
+# Copiați acest fișier în directorul de date:
+#   Windows: C:\ProgramData\SisMon\sismon.toml   (editor pornit ca administrator)
+#   Linux:   /var/lib/sismon/sismon.toml         (sudo -u sismon …)
+#
+# Se citește la fiecare pornire: după o modificare, reporniți serviciul
+# (sismon stop, apoi sismon start). Opțiunile date explicit în linia de comandă
+# (de exemplu sismon install --listen :9000) au prioritate față de acest fișier.
+# Liniile care încep cu # sunt ignorate; scoateți # pentru a activa o opțiune.
+# Setările de monitorizare (interval, praguri, backup etc.) NU sunt aici:
+# se modifică din Administrare → Setări monitorizare.
+
+# Adresa și portul interfeței web. ":8501" = toate interfețele de rețea, portul 8501.
+# Pentru a asculta doar pe o anumită adresă: "192.168.1.10:8501".
+listen = ":8501"
+
+# HTTPS (opțional). Lăsat comentat = HTTP simplu.
+#
+# Varianta 1: certificat autosemnat, generat automat în <director de date>\tls\
+# (valabil 5 ani; browserul va afișa un avertisment la prima accesare).
+# tls = "auto"
+#
+# Varianta 2: certificatul propriu (PEM). Pe Windows folosiți ghilimele simple,
+# ca backslash-ul să fie păstrat ca atare.
+# tls = "files"
+# tls_cert = 'C:\certs\sismon.crt'
+# tls_key  = 'C:\certs\sismon.key'
+
+# Reverse proxy de încredere (nginx, IIS etc.), doar dacă SisMon este accesat prin el.
+# Indicați IP-ul sau subrețeaua proxy-ului; fără această opțiune, antetele
+# X-Forwarded-* sunt ignorate. Nu adăugați aici rețelele utilizatorilor.
+# trusted_proxy = ["10.0.0.5"]
